@@ -40,32 +40,34 @@ class Person(BaseSchema):
     last_name = Field(str, 'last_name')
 
     @classmethod
-    def validate(cls, **kwargs):
-        pk, changeset = super().validate(**kwargs)
+    def validate(cls, row):
+        pk, changeset = super().validate(row)
         # Do some additional validation here
         return pk, changeset
 
 
 # Select all users
-Query(User)
+(Query(User)
     .select()
-    .execute()
+    .execute())
 
 # Left join with Person
-Query(User, Person)
-    .select(User.email, Person.first_name, Person.last_name)
+(Query(User, Person)
+    .select(User.id, Person.first_name, Person.last_name)
     .left_join(Person, on=[Person.id, User.person_id])
     .where(**{str(Person.archive): 0})
-    .execute()
+    .execute())
 
 # Get single user
-Query(User)
+(Query(User)
     .get()
     .where(**{str(User.id): 1})
-    .execute()
+    .execute())
 
 # Create a person
-person_id = Person.insert({"first_name": "Matthew", "last_name": "Rousseau"})
+person_id = Person.insert({
+    "first_name": "Matthew", "last_name": "Rousseau", "email": "fake@mail.com"
+})
 
 # Update the person
 Person.update({"id": person_id}, {"email": "astolfo@waifu.church"})

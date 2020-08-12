@@ -73,17 +73,17 @@ class Schema:
         return pk, fields
 
     @classmethod
-    def validate(cls, *args, **kwargs):
+    def validate(cls, row):
         pk, fields = cls._get_fields()
         changeset = {}
 
-        updating = kwargs.get(pk) is not None
+        updating = row.get(pk) is not None
 
         for name, field in fields.items():
-            if kwargs.get(name) is None and updating is True:
+            if row.get(name) is None and updating is True:
                 continue
 
-            new_value = kwargs.get(name)
+            new_value = row.get(name)
 
             if new_value is None:
                 if field.default is not None:
@@ -111,11 +111,11 @@ class Schema:
 
         sql = sql[:-2]
 
-        return Schema._database_.insert(sql, params)
+        return cls._database_.insert(sql, params)
 
     @classmethod
     def update(cls, old, new):
-        pk, changeset = cls.validate(**{**old, **new})
+        pk, changeset = cls.validate({**old, **new})
         sql = f"update {cls.table_name} set "
         params = []
 
