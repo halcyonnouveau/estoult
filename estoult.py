@@ -24,6 +24,35 @@ def _strip(string):
     return string.rstrip(" ").rstrip(",")
 
 
+class FunctionMetaclass(type):
+
+    sql_single_arg_fns = [
+        "count",
+        "sum",
+        "avg",
+        "ceil",
+    ]
+
+    @staticmethod
+    def _make_single_arg_fn(name):
+        def wrapper(field):
+            return f"{name}({str(field)})"
+
+        return wrapper
+
+    def __new__(cls, clsname, bases, attrs):
+        attrs = {}
+
+        for f in cls.sql_single_arg_fns:
+            attrs[f] = FunctionMetaclass._make_single_arg_fn(f)
+
+        return super(FunctionMetaclass, cls).__new__(cls, clsname, bases, attrs)
+
+
+class fn(metaclass=FunctionMetaclass):
+    pass
+
+
 class Field:
     def __init__(self, type, name, **kwargs):
         self.type = type
@@ -255,9 +284,3 @@ class Database:
             raise err
         finally:
             cursor.close()
-
-
-class fn:
-    @staticmethod
-    def count(field):
-        return f"count({str(field)})"
