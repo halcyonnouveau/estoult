@@ -17,7 +17,26 @@ except ImportError:
     mysql = None
 
 
+__version__ = "0.1.0"
+__all__ = [
+    "fn",
+    "op",
+    "Field",
+    "Schema",
+    "Query",
+    "Database",
+]
+
+
 class EstoultError(Exception):
+    pass
+
+
+class ClauseError(ValueError):
+    pass
+
+
+class FieldError(ValueError):
     pass
 
 
@@ -27,7 +46,7 @@ ConditionalClause = namedtuple("ConditionalClause", ["conditional", "params"])
 OperatorClause = namedtuple("OperatorClause", ["operator", "operand"])
 
 
-def _parse_clause(clause):
+def parse_clause(clause):
     if isinstance(clause, ConditionalClause):
         return Clause(clause.conditional, clause.params)
 
@@ -38,6 +57,9 @@ def _parse_clause(clause):
         # > .where({User.name: "beanpuppy"}, {User.archive: 0})
         # This makes the following SQL:
         # `where User.name = "beanpuppy" and User.archive = 0`
+        if len(clause.keys()) > 1:
+            raise ClauseError("Clause can only have one key/value pair")
+
         key, value = list(clause.items())[0]
 
         if isinstance(value, OperatorClause):
@@ -56,10 +78,12 @@ def _parse_clause(clause):
             string = f"{str(key)} = %s "
             params = (value,)
 
-    return Clause(string, params)
+        return Clause(string, params)
+
+    raise ClauseError(f"Clause structure is incorrect: {str(clause)}")
 
 
-def _strip(string):
+def strip(string):
     return string.rstrip(" ").rstrip(",").rstrip("and")
 
 
@@ -123,7 +147,7 @@ class op(metaclass=OperatorMetaclass):
     @staticmethod
     def _clause_args(func):
         def wrapper(cls, *args):
-            args = [_parse_clause(a) for a in args]
+            args = [parse_clause(a) for a in args]
             return func(cls, *args)
 
         return wrapper
@@ -132,17 +156,19 @@ class op(metaclass=OperatorMetaclass):
     @_clause_args.__func__
     def or_(cls, cond_1, cond_2):
         return ConditionalClause(
-            f"{_strip(cond_1[0])} or {_strip(cond_2[0])} ",
-            (*cond_1[1], *cond_2[1]),
+            f"{strip(cond_1[0])} or {strip(cond_2[0])} ", (*cond_1[1], *cond_2[1]),
         )
 
     @classmethod
     @_clause_args.__func__
     def and_(cls, cond_1, cond_2):
         return ConditionalClause(
-            f"{_strip(cond_1[0])} and {_strip(cond_2[0])} ",
-            (*cond_1[1], *cond_2[1]),
+            f"{strip(cond_1[0])} and {strip(cond_2[0])} ", (*cond_1[1], *cond_2[1]),
         )
+
+    @classmethod
+    def not_(cls, field):
+        return ConditionalClause("not {str(field)} ", ())
 
     @classmethod
     def is_null(cls, field):
@@ -191,22 +217,6 @@ class Schema:
                 f.schema = self
 
     @classmethod
-    def mogrify(cls, *args, **kwargs):
-        return cls._database_.mogrify(*args, **kwargs)
-
-    @classmethod
-    def sql(cls, *args, **kwargs):
-        return cls._database_.sql(*args, **kwargs)
-
-    @classmethod
-    def select(cls, *args, **kwargs):
-        return cls._database_.select(*args, **kwargs)
-
-    @classmethod
-    def get(cls, *args, **kwargs):
-        return cls._database_.get(*args, **kwargs)
-
-    @classmethod
     def _get_fields(cls):
         pk = None  # Is primary_key or unique
         fields = {}
@@ -248,10 +258,10 @@ class Schema:
                     new_value = field.default
             else:
                 if isinstance(new_value, field.type) is False:
-                    raise EstoultError(f"Incorrect type for {str(field)}.")
+                    raise FieldError(f"Incorrect type for {str(field)}.")
 
             if field.null is False and new_value is None:
-                raise EstoultError(f"{str(field)} cannot be None")
+                raise FieldError(f"{str(field)} cannot be None")
 
             changeset[name] = new_value
 
@@ -267,7 +277,7 @@ class Schema:
             params.append(value)
             sql += f"{str(key)} = %s, "
 
-        return cls._database_.insert(_strip(sql), params)
+        return cls._database_.insert(strip(sql), params)
 
     @classmethod
     def update(cls, old, new):
@@ -281,7 +291,7 @@ class Schema:
             params.append(value)
             sql += f"{str(key)} = %s, "
 
-        sql = f"{_strip(sql)} where {pk} = {changeset[pk]}"
+        sql = f"{strip(sql)} where {pk} = {changeset[pk]}"
 
         return cls._database_.sql(sql, params)
 
@@ -309,7 +319,7 @@ class QueryMetaclass(type):
     def make_join_fn(join_type):
         def join_fn(self, schema, on):
             if schema not in self.schemas:
-                raise EstoultError("Schema not added to Query")
+                raise EstoultError(f"Schema not added to Query")
 
             q = f"{str(on[0])} = {str(on[1])}"
             self._query += f"{join_type} {schema.table_name} on {q}\n"
@@ -365,7 +375,7 @@ class Query(metaclass=QueryMetaclass):
             self._query += f"{str(key)} = %s, "
             self._params.append(str(value))
 
-        self._query = f"{_strip(self._query)}\n"
+        self._query = f"{strip(self._query)}\n"
 
         return self
 
@@ -379,6 +389,11 @@ class Query(metaclass=QueryMetaclass):
         self.method = "get"
         return self
 
+    def get_or_none(self, *args):
+        self.select(*args)
+        self.method = "get_or_none"
+        return self
+
     def union(self):
         self._query += "union\n"
         return self
@@ -387,12 +402,12 @@ class Query(metaclass=QueryMetaclass):
         self._query += "where "
 
         for clause in clauses:
-            string, params = _parse_clause(clause)
+            string, params = parse_clause(clause)
 
             self._query += f"{string} and "
             self._params.extend(params)
 
-        self._query = f"{_strip(self._query)}\n"
+        self._query = f"{strip(self._query)}\n"
 
         return self
 
@@ -409,7 +424,7 @@ class Query(metaclass=QueryMetaclass):
         return self
 
     def execute(self):
-        func = getattr(self.schemas[0], self.method)
+        func = getattr(self.schema._database_, self.method)
         return func(self._query, self._params)
 
     def __str__(self):
@@ -468,7 +483,7 @@ class Database:
             cursor.execute(query, params)
             cols = [col[0] for col in cursor.description]
             return [dict(zip(cols, row)) for row in cursor.fetchall()]
-        except (Exception, mysql.Error) as err:
+        except Exception as err:
             raise err
         finally:
             cursor.close()
@@ -477,6 +492,12 @@ class Database:
     def get(self, query, params):
         row = self.select(query, params)
         return row[0]
+
+    def get_or_none(self, query, params):
+        try:
+            return self.get(query, params)
+        except IndexError:
+            return None
 
     def insert(self, query, params):
         conn = self.connect()
@@ -487,7 +508,7 @@ class Database:
             row_id = cursor.lastrowid
             conn.commit()
             return row_id
-        except (Exception, mysql.Error) as err:
+        except Exception as err:
             conn.rollback()
             raise err
         finally:
@@ -501,7 +522,7 @@ class Database:
             cursor.execute(query, params)
             conn.commit()
             return True
-        except (Exception, mysql.Error) as err:
+        except Exception as err:
             conn.rollback()
             raise err
         finally:

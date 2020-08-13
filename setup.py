@@ -7,6 +7,8 @@ from setuptools import setup
 # To use a consistent encoding
 from os import path
 
+from estoult import __version__
+
 here = path.abspath(path.dirname(__file__))
 
 with io.open("README.md", "rt", encoding="utf8") as f:
@@ -14,7 +16,7 @@ with io.open("README.md", "rt", encoding="utf8") as f:
 
 setup(
     name="estoult",
-    version="0.1.0",
+    version=__version__,
     description="Simple SQL data mapper.",
     long_description=readme,
     long_description_content_type="text/markdown",
