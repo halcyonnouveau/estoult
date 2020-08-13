@@ -82,33 +82,47 @@ class OperatorMetaclass(type):
 
 class op(metaclass=OperatorMetaclass):
     @staticmethod
-    def _parse_conditional(conditional):
-        if isinstance(conditional, tuple):
-            string = conditional[0]
-            params = conditional[1]
+    def _parse_clause(clause):
+        if isinstance(clause, tuple):
+            # This is a logical operator you can combine clauses with.
+            # It's already parsed so we can pass it on. e.g:
+            # > op.or_({Person.id: 1}, {Person.id: 2})
+            # > op.not_null(Person.id)
+            string = clause[0]
+            params = clause[1]
 
-        if isinstance(conditional, dict):
-            key, value = list(conditional.items())[0]
+        if isinstance(clause, dict):
+            # A clause is a dict with one key/value. E.g:
+            # {User.email: "email@mail.com"}
+            # In a `where` function you would add multiple clauses like this:
+            # > .where({User.name: "beanpuppy"}, {User.archive: 0})
+            # This makes the following SQL:
+            # `where User.name = "beanpuppy" and User.archive = 0`
+            key, value = list(clause.items())[0]
 
             if isinstance(value, tuple):
+                # This is normally a clause from the operator class:
+                # > {Person.id: op.gt(1)}
                 string = f"{str(key)} {value[0]} "
                 params = (value[1],)
             else:
+                # The default way clauses are:
+                # > {Person.id: 1}
                 string = f"{str(key)} = %s "
                 params = (value,)
 
         return string, params
 
     @staticmethod
-    def _conditional_args(func):
+    def _clause_args(func):
         def wrapper(cls, *args):
-            args = [op._parse_conditional(a) for a in args]
+            args = [op._parse_clause(a) for a in args]
             return func(cls, *args)
 
         return wrapper
 
     @classmethod
-    @_conditional_args.__func__
+    @_clause_args.__func__
     def or_(cls, cond_1, cond_2):
         return (
             f"{_strip(cond_1[0])} or {_strip(cond_2[0])} ",
@@ -116,7 +130,7 @@ class op(metaclass=OperatorMetaclass):
         )
 
     @classmethod
-    @_conditional_args.__func__
+    @_clause_args.__func__
     def and_(cls, cond_1, cond_2):
         return (
             f"{_strip(cond_1[0])} and {_strip(cond_2[0])} ",
@@ -125,11 +139,11 @@ class op(metaclass=OperatorMetaclass):
 
     @classmethod
     def is_null(cls, field):
-        return "{str(field)} is null "
+        return "{str(field)} is null ", ()
 
     @classmethod
     def not_null(cls, field):
-        return "{str(field)} is not null "
+        return "{str(field)} is not null ", ()
 
 
 class Field:
@@ -241,6 +255,8 @@ class Schema:
 
     @classmethod
     def update(cls, old, new):
+        # This updates a single row only, if you want to update several
+        # use `update` in Query
         pk, changeset = cls.validate({**old, **new})
         sql = f"update {cls.table_name} set "
         params = []
@@ -336,11 +352,11 @@ class Query(metaclass=QueryMetaclass):
         self._query += "union\n"
         return self
 
-    def where(self, *conditionals):
+    def where(self, *clauses):
         self._query += "where "
 
-        for conditional in conditionals:
-            string, params = op._parse_conditional(conditional)
+        for clause in clauses:
+            string, params = op._parse_clause(clause)
 
             self._query += f"{string} and "
             self._params.extend(params)
