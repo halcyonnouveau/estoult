@@ -7,7 +7,7 @@ It is **NOT** an ORM.
 ## Example
 
 ```python
-from estoult import Database, Query, Field
+from estoult import Database, Query, Field, fn, op
 
 db = Database(
     user="user",
@@ -34,13 +34,12 @@ class User(BaseSchema):
         # Get single user
         return (Query(cls)
             .get()
-            .where(**{str(cls.id): 1})
+            .where({str(cls.id): id})
             .execute())
 
 
 class Person(BaseSchema):
     table_name = "Persons"
-
     email = Field(str, "email")
     first_name = Field(str, "first_name")
     last_name = Field(str, "last_name")
@@ -63,12 +62,19 @@ users = (
     .execute()
 )
 
-# Join users with persons
+# Count all users
+users_count = (
+    Query(User)
+    .select(fn.count(User.id))
+    .execute()
+)
+
+# Left join with person where id > 2
 users_join = (
     Query(User, Person)
     .select(User.id, Person.first_name, Person.last_name)
     .left_join(Person, on=[Person.id, User.person_id])
-    .where(**{str(Person.archive): 0})
+    .where({str(Person.id): op.gt(2)})
     .execute()
 )
 
@@ -82,4 +88,10 @@ person_id = Person.insert({
 
 # Update the person
 Person.update({"id": person_id}, {"email": "astolfo@waifu.church"})
+
+# Bulk update
+(Query(Person)
+    .update({str(Person.first_name): "Fake Name"})
+    .where({str(Person.last_name): "Last Name"})
+    .execute())
 ```

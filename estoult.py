@@ -1,4 +1,6 @@
-import re
+import sys
+
+from contextlib import contextmanager
 
 try:
     import sqlite3
@@ -26,7 +28,7 @@ def _strip(string):
 
 class FunctionMetaclass(type):
 
-    sql_single_arg_fns = [
+    sql_fns = [
         "count",
         "sum",
         "avg",
@@ -34,22 +36,54 @@ class FunctionMetaclass(type):
     ]
 
     @staticmethod
-    def _make_single_arg_fn(name):
-        def wrapper(field):
-            return f"{name}({str(field)})"
+    def _make_fn(name):
+        def wrapper(*args):
+            return f"{name}({str(', '.join([str(a) for a in args]))})"
 
         return wrapper
 
     def __new__(cls, clsname, bases, attrs):
         attrs = {}
 
-        for f in cls.sql_single_arg_fns:
-            attrs[f] = FunctionMetaclass._make_single_arg_fn(f)
+        for f in cls.sql_fns:
+            attrs[f] = FunctionMetaclass._make_fn(f)
 
         return super(FunctionMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
 
 class fn(metaclass=FunctionMetaclass):
+    pass
+
+
+class OperatorMetaclass(type):
+
+    sql_ops = {
+        "eq": "=",
+        "lt": "<",
+        "lt_eq": "<=",
+        "gt": ">",
+        "gt_eq": ">=",
+        "n_eq": "<>",
+        "in": "in",
+    }
+
+    @staticmethod
+    def _make_fn(operator):
+        def wrapper(value):
+            return f"{operator} %s", str(value)
+
+        return wrapper
+
+    def __new__(cls, clsname, bases, attrs):
+        attrs = {}
+
+        for name, operator in cls.sql_ops.items():
+            attrs[name] = OperatorMetaclass._make_fn(operator)
+
+        return super(OperatorMetaclass, cls).__new__(cls, clsname, bases, attrs)
+
+
+class op(metaclass=OperatorMetaclass):
     pass
 
 
@@ -83,6 +117,14 @@ class Schema:
                 f.schema = self
 
     @classmethod
+    def mogrify(cls, *args, **kwargs):
+        return cls._database_.mogrify(*args, **kwargs)
+
+    @classmethod
+    def sql(cls, *args, **kwargs):
+        return cls._database_.sql(*args, **kwargs)
+
+    @classmethod
     def select(cls, *args, **kwargs):
         return cls._database_.select(*args, **kwargs)
 
@@ -107,17 +149,18 @@ class Schema:
         return pk, fields
 
     @classmethod
-    def validate(cls, row):
+    def validate(cls, row, updating=False):
         pk, fields = cls._get_fields()
         changeset = {}
 
-        updating = row.get(pk) is not None
+        if updating is not True:
+            updating = row.get(pk) is not None
 
         for name, field in fields.items():
-            if row.get(name) is None and updating is True:
-                continue
+            new_value = row.get(name) or row.get(str(field))
 
-            new_value = row.get(name)
+            if new_value is None and updating is True:
+                continue
 
             if new_value is None:
                 if field.default is not None:
@@ -170,10 +213,6 @@ class Query:
         self._query = ""
         self._params = []
 
-    @staticmethod
-    def sanitise_query(query):
-        return re.sub(r"^[a-zA-Z_][a-zA-Z0-9_\$]*$", "", query)
-
     def select(self, *args):
         self.method = "select"
 
@@ -183,6 +222,22 @@ class Query:
             args = ", ".join([str(a) for a in args])
 
         self._query = f"select {args} from {self.schemas[0].table_name}\n"
+
+        return self
+
+    def update(self, changeset):
+        self.method = "sql"
+        schema = self.schemas[0]
+
+        self._query = f"update {schema.table_name} set "
+
+        _, changeset = schema.validate(changeset, updating=True)
+
+        for key, value in changeset.items():
+            self._query += f"{key} = %s, "
+            self._params.append(str(value))
+
+        self._query = f"{_strip(self._query)}\n"
 
         return self
 
@@ -204,12 +259,18 @@ class Query:
         self._query += "union\n"
         return self
 
-    def where(self, *args, **kwargs):
+    def where(self, *args):
         self._query += "where "
 
-        for key, value in kwargs.items():
-            self._query += f"{key} = '%s', "
-            self._params.append(value)
+        for arg in args:
+            key, value = list(arg.items())[0]
+
+            if isinstance(value, tuple):
+                self._query += f"{key} {value[0]}, "
+                self._params.append(value[1])
+            else:
+                self._query += f"{key} = %s, "
+                self._params.append(value)
 
         self._query = f"{_strip(self._query)}\n"
 
@@ -220,8 +281,11 @@ class Query:
         return func(self._query, self._params)
 
     def __str__(self):
-        query = self._query % self._params
-        return f"({Query.sanitise_query(query)})"
+        return f"""
+            ({self.schemas[0]
+            .mogrify(self._query, self._params)
+            .decode("utf-8")})
+        """.replace("\n", " ").strip()
 
 
 class Database:
@@ -237,6 +301,34 @@ class Database:
             return mysql.connect(**kwargs)
 
         return connect
+
+    @contextmanager
+    def transaction(self, commit=True):
+        conn = self.connect()
+        cursor = conn.cursor()
+
+        try:
+            yield cursor
+        except mysql.DatabaseError as err:
+            error = err.args
+            sys.stderr.write(error.message)
+            conn.rollback()
+            raise err
+        else:
+            if commit:
+                conn.commit()
+            else:
+                conn.rollback()
+        finally:
+            conn.close()
+
+    def mogrify(self, query, params):
+        with self.transaction(commit=False) as cursor:
+            if psycopg2:
+                return cursor.mogrify(query, params)
+
+            cursor.execute(query, params)
+            return cursor._executed
 
     def select(self, query, params):
         conn = self.connect()
