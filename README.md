@@ -34,7 +34,7 @@ class User(BaseSchema):
         # Get single user
         return (Query(cls)
             .get()
-            .where({str(cls.id): id})
+            .where({cls.id: id})
             .execute())
 
 
