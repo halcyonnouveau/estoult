@@ -1,5 +1,3 @@
-import sys
-
 from contextlib import contextmanager
 
 try:
@@ -33,6 +31,7 @@ class FunctionMetaclass(type):
         "sum",
         "avg",
         "ceil",
+        "distinct",
     ]
 
     @staticmethod
@@ -75,8 +74,6 @@ class OperatorMetaclass(type):
         return wrapper
 
     def __new__(cls, clsname, bases, attrs):
-        attrs = {}
-
         for name, operator in cls.sql_ops.items():
             attrs[name] = OperatorMetaclass._make_fn(operator)
 
@@ -283,6 +280,18 @@ class Query:
 
         self._query = f"{_strip(self._query)}\n"
 
+        return self
+
+    def limit(self, args):
+        s = ', '.join(['%s' for a in args])
+        self._query += f"limit {s}\n"
+        self._params.append(*args)
+        return self
+
+    def order_by(self, args, sort='desc'):
+        s = ', '.join(['%s' for a in args])
+        self._query += f"limit {s} {sort}\n"
+        self._params.append(*args)
         return self
 
     def execute(self):
