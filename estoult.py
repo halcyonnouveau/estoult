@@ -43,8 +43,6 @@ class FunctionMetaclass(type):
         return wrapper
 
     def __new__(cls, clsname, bases, attrs):
-        attrs = {}
-
         for f in cls.sql_fns:
             attrs[f] = FunctionMetaclass._make_fn(f)
 
@@ -52,7 +50,9 @@ class FunctionMetaclass(type):
 
 
 class fn(metaclass=FunctionMetaclass):
-    pass
+    @classmethod
+    def alias(cls, field, value):
+        return f"{field} as {value}"
 
 
 class OperatorMetaclass(type):
@@ -102,6 +102,12 @@ class Field:
 
     def __str__(self):
         return self.full_name
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, comp):
+        return str(self) == comp
 
 
 class Schema:
@@ -184,7 +190,7 @@ class Schema:
 
         for key, value in changeset.items():
             params.append(value)
-            sql += f"{key} = %s, "
+            sql += f"{str(key)} = %s, "
 
         return cls._database_.insert(_strip(sql), params)
 
@@ -196,7 +202,7 @@ class Schema:
 
         for key, value in changeset.items():
             params.append(value)
-            sql += f"{key} = %s, "
+            sql += f"{str(key)} = %s, "
 
         sql = f"{_strip(sql)} where {pk} = {changeset[pk]}"
 
@@ -234,7 +240,7 @@ class Query:
         _, changeset = schema.validate(changeset, updating=True)
 
         for key, value in changeset.items():
-            self._query += f"{key} = %s, "
+            self._query += f"{str(key)} = %s, "
             self._params.append(str(value))
 
         self._query = f"{_strip(self._query)}\n"
@@ -266,10 +272,10 @@ class Query:
             key, value = list(arg.items())[0]
 
             if isinstance(value, tuple):
-                self._query += f"{key} {value[0]}, "
+                self._query += f"{str(key)} {value[0]}, "
                 self._params.append(value[1])
             else:
-                self._query += f"{key} = %s, "
+                self._query += f"{str(key)} = %s, "
                 self._params.append(value)
 
         self._query = f"{_strip(self._query)}\n"
@@ -285,7 +291,9 @@ class Query:
             ({self.schemas[0]
             .mogrify(self._query, self._params)
             .decode("utf-8")})
-        """.replace("\n", " ").strip()
+        """.replace(
+            "\n", " "
+        ).strip()
 
 
 class Database:
@@ -310,8 +318,6 @@ class Database:
         try:
             yield cursor
         except mysql.DatabaseError as err:
-            error = err.args
-            sys.stderr.write(error.message)
             conn.rollback()
             raise err
         else:

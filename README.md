@@ -1,6 +1,6 @@
 # Estoult
 
-Estoult is a Python data mapper and language integrated query for SQL databases.
+Estoult is a Python data mapper and integrated query language for SQL databases.
 
 It is **NOT** an ORM.
 
@@ -65,16 +65,16 @@ users = (
 # Count all users
 users_count = (
     Query(User)
-    .select(fn.count(User.id))
+    .get(fn.alias(fn.count(User.id), "count"))
     .execute()
-)
+)["count"]
 
 # Left join with person where id > 2
 users_join = (
     Query(User, Person)
     .select(User.id, Person.first_name, Person.last_name)
     .left_join(Person, on=[Person.id, User.person_id])
-    .where({str(Person.id): op.gt(2)})
+    .where({Person.id: op.gt(2)})
     .execute()
 )
 
@@ -91,7 +91,7 @@ Person.update({"id": person_id}, {"email": "astolfo@waifu.church"})
 
 # Bulk update
 (Query(Person)
-    .update({str(Person.first_name): "Fake Name"})
-    .where({str(Person.last_name): "Last Name"})
+    .update({Person.first_name: "Fake Name"})
+    .where({Person.last_name: "Last Name"})
     .execute())
 ```
