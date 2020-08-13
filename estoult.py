@@ -35,15 +35,15 @@ class FunctionMetaclass(type):
     ]
 
     @staticmethod
-    def make_fn(name):
-        def wrapper(*args):
+    def make_sql_fn(name):
+        def sql_fn(*args):
             return f"{name}({str(', '.join([str(a) for a in args]))})"
 
-        return wrapper
+        return sql_fn
 
     def __new__(cls, clsname, bases, attrs):
         for f in cls.sql_fns:
-            attrs[f] = FunctionMetaclass.make_fn(f)
+            attrs[f] = FunctionMetaclass.make_sql_fn(f)
 
         return super(FunctionMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
@@ -68,10 +68,10 @@ class OperatorMetaclass(type):
 
     @staticmethod
     def make_fn(operator):
-        def wrapper(value):
+        def op_fn(value):
             return f"{operator} %s", str(value)
 
-        return wrapper
+        return op_fn
 
     def __new__(cls, clsname, bases, attrs):
         for name, operator in cls.sql_ops.items():
@@ -254,7 +254,39 @@ class Schema:
         return cls._database_.sql(sql, params)
 
 
-class Query:
+class QueryMetaclass(type):
+
+    sql_joins = [
+        "inner join",
+        "left join",
+        "left outer join",
+        "right join",
+        "right outer join",
+        "full join",
+        "full outer join",
+    ]
+
+    @staticmethod
+    def make_join_fn(join_type):
+        def join_fn(self, schema, on):
+            if schema not in self.schemas:
+                raise EstoultError("Schema not added to Query")
+
+            q = f"{str(on[0])} = {str(on[1])}"
+            self._query += f"{join_type} {schema.table_name} on {q}\n"
+
+            return self
+
+        return join_fn
+
+    def __new__(cls, clsname, bases, attrs):
+        for join_type in cls.sql_joins:
+            attrs[join_type.replace(" ", "_")] = QueryMetaclass.make_join_fn(join_type)
+
+        return super(QueryMetaclass, cls).__new__(cls, clsname, bases, attrs)
+
+
+class Query(metaclass=QueryMetaclass):
     def __init__(self, *schemas):
         if len(schemas) == 0:
             raise EstoultError("Schema(s) is/are required")
@@ -298,15 +330,6 @@ class Query:
     def get(self, *args):
         self.select(*args)
         self.method = "get"
-        return self
-
-    def left_join(self, schema, on):
-        if schema not in self.schemas:
-            raise EstoultError("Schema not added to Query")
-
-        q = f"{str(on[0])} = {str(on[1])}"
-        self._query += f"left join {schema.table_name} on {q}\n"
-
         return self
 
     def union(self):

@@ -1,6 +1,6 @@
 # Estoult
 
-Estoult is a Python data mapper and integrated query language for SQL databases.
+Estoult is a Python data mapper and integrated query builder for SQL databases.
 
 It is **NOT** an ORM.
 
