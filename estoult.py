@@ -429,7 +429,9 @@ class Query(metaclass=QueryMetaclass):
 
     def __str__(self):
         return f"""
-            {self.schema.mogrify(self._query, self._params).decode("utf-8")}
+            {(self.schema._database_
+                .mogrify(self._query, self._params)
+                .decode("utf-8"))}
         """.replace(
             "\n", " "
         ).strip()
