@@ -326,16 +326,16 @@ class Query:
 
         return self
 
-    def limit(self, args):
+    def limit(self, *args):
         s = ", ".join(["%s" for a in args])
         self._query += f"limit {s}\n"
-        self._params.append(*args)
+        self._params.extend(args)
         return self
 
-    def order_by(self, args, sort="desc"):
+    def order_by(self, *args, sort="desc"):
         s = ", ".join(["%s" for a in args])
         self._query += f"limit {s} {sort}\n"
-        self._params.append(*args)
+        self._params.extend(args)
         return self
 
     def execute(self):
