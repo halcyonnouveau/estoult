@@ -21,7 +21,7 @@ class EstoultError(Exception):
 
 
 def _strip(string):
-    return string.rstrip(" ").rstrip(",")
+    return string.rstrip(" ").rstrip(",").rstrip("and")
 
 
 class FunctionMetaclass(type):
@@ -35,7 +35,7 @@ class FunctionMetaclass(type):
     ]
 
     @staticmethod
-    def _make_fn(name):
+    def make_fn(name):
         def wrapper(*args):
             return f"{name}({str(', '.join([str(a) for a in args]))})"
 
@@ -43,7 +43,7 @@ class FunctionMetaclass(type):
 
     def __new__(cls, clsname, bases, attrs):
         for f in cls.sql_fns:
-            attrs[f] = FunctionMetaclass._make_fn(f)
+            attrs[f] = FunctionMetaclass.make_fn(f)
 
         return super(FunctionMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
@@ -63,11 +63,11 @@ class OperatorMetaclass(type):
         "gt": ">",
         "gt_eq": ">=",
         "n_eq": "<>",
-        "in": "in",
+        "in_": "in",
     }
 
     @staticmethod
-    def _make_fn(operator):
+    def make_fn(operator):
         def wrapper(value):
             return f"{operator} %s", str(value)
 
@@ -75,13 +75,61 @@ class OperatorMetaclass(type):
 
     def __new__(cls, clsname, bases, attrs):
         for name, operator in cls.sql_ops.items():
-            attrs[name] = OperatorMetaclass._make_fn(operator)
+            attrs[name] = OperatorMetaclass.make_fn(operator)
 
         return super(OperatorMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
 
 class op(metaclass=OperatorMetaclass):
-    pass
+    @staticmethod
+    def _parse_conditional(conditional):
+        if isinstance(conditional, tuple):
+            string = conditional[0]
+            params = conditional[1]
+
+        if isinstance(conditional, dict):
+            key, value = list(conditional.items())[0]
+
+            if isinstance(value, tuple):
+                string = f"{str(key)} {value[0]} "
+                params = (value[0],)
+            else:
+                string = f"{str(key)} = %s "
+                params = (value,)
+
+        return string, params
+
+    @staticmethod
+    def _conditional_args(func):
+        def wrapper(cls, *args):
+            args = [op._parse_conditional(a) for a in args]
+            return func(cls, *args)
+
+        return wrapper
+
+    @classmethod
+    @_conditional_args.__func__
+    def or_(cls, cond_1, cond_2):
+        return (
+            f"{_strip(cond_1[0])} or {_strip(cond_2[0])} ",
+            (*cond_1[1], *cond_2[1]),
+        )
+
+    @classmethod
+    @_conditional_args.__func__
+    def and_(cls, cond_1, cond_2):
+        return (
+            f"{_strip(cond_1[0])} and {_strip(cond_2[0])} ",
+            (*cond_1[1], *cond_2[1]),
+        )
+
+    @classmethod
+    def is_null(cls, field):
+        return "{str(field)} is null "
+
+    @classmethod
+    def not_null(cls, field):
+        return "{str(field)} is not null "
 
 
 class Field:
@@ -265,31 +313,27 @@ class Query:
         self._query += "union\n"
         return self
 
-    def where(self, *args):
+    def where(self, *conditionals):
         self._query += "where "
 
-        for arg in args:
-            key, value = list(arg.items())[0]
+        for conditional in conditionals:
+            string, params = op._parse_conditional(conditional)
 
-            if isinstance(value, tuple):
-                self._query += f"{str(key)} {value[0]}, "
-                self._params.append(value[1])
-            else:
-                self._query += f"{str(key)} = %s, "
-                self._params.append(value)
+            self._query += f"{string} and "
+            self._params.extend(params)
 
         self._query = f"{_strip(self._query)}\n"
 
         return self
 
     def limit(self, args):
-        s = ', '.join(['%s' for a in args])
+        s = ", ".join(["%s" for a in args])
         self._query += f"limit {s}\n"
         self._params.append(*args)
         return self
 
-    def order_by(self, args, sort='desc'):
-        s = ', '.join(['%s' for a in args])
+    def order_by(self, args, sort="desc"):
+        s = ", ".join(["%s" for a in args])
         self._query += f"limit {s} {sort}\n"
         self._params.append(*args)
         return self
