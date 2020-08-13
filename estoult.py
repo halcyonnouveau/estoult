@@ -92,7 +92,7 @@ class op(metaclass=OperatorMetaclass):
 
             if isinstance(value, tuple):
                 string = f"{str(key)} {value[0]} "
-                params = (value[0],)
+                params = (value[1],)
             else:
                 string = f"{str(key)} = %s "
                 params = (value,)
