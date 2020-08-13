@@ -173,10 +173,10 @@ class Schema:
                     new_value = field.default
             else:
                 if isinstance(new_value, field.type) is False:
-                    raise EstoultError(f"Incorrect type for {name}.")
+                    raise EstoultError(f"Incorrect type for {str(field)}.")
 
             if field.null is False and new_value is None:
-                raise EstoultError(f"{name} cannot be None")
+                raise EstoultError(f"{str(field)} cannot be None")
 
             changeset[name] = new_value
 
@@ -211,6 +211,9 @@ class Schema:
 
 class Query:
     def __init__(self, *schemas):
+        if len(schemas) == 0:
+            raise EstoultError("Schema(s) is/are required")
+
         self.schemas = schemas
         [s() for s in schemas]
 
