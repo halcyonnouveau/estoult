@@ -45,8 +45,8 @@ class Person(BaseSchema):
     last_name = Field(str, "last_name")
 
     @classmethod
-    def validate(cls, row):
-        pk, changeset = super().validate(row)
+    def validate(cls, row, **kwargs):
+        pk, changeset = super().validate(row, **kwargs)
 
         # Do some additional validation here
         if changeset["email"].endswith(".fr")
