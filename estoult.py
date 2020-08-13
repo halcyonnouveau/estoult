@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from collections import namedtuple
 
 try:
     import sqlite3
@@ -18,6 +19,44 @@ except ImportError:
 
 class EstoultError(Exception):
     pass
+
+
+Subquery = namedtuple("Subquery", ["query", "params"])
+Clause = namedtuple("Clause", ["clause", "params"])
+ConditionalClause = namedtuple("ConditionalClause", ["conditional", "params"])
+OperatorClause = namedtuple("OperatorClause", ["operator", "operand"])
+
+
+def _parse_clause(clause):
+    if isinstance(clause, ConditionalClause):
+        return Clause(clause.conditional, clause.params)
+
+    if isinstance(clause, dict):
+        # An unparsed clause is a dict with one key/value. E.g:
+        # {User.email: "email@mail.com"}
+        # In a `where` function you would add multiple clauses like this:
+        # > .where({User.name: "beanpuppy"}, {User.archive: 0})
+        # This makes the following SQL:
+        # `where User.name = "beanpuppy" and User.archive = 0`
+        key, value = list(clause.items())[0]
+
+        if isinstance(value, OperatorClause):
+            # This is normally a clause from the operator class:
+            # > {Person.id: op.gt(1)}
+            string = f"{str(key)} {value.operator} %s "
+
+            if isinstance(value.operand, Subquery):
+                string = string % (value.operand.query,)
+                params = value.operand.params
+            else:
+                params = (value.operand,)
+        else:
+            # The default way clauses are:
+            # > {Person.id: 1}
+            string = f"{str(key)} = %s "
+            params = (value,)
+
+    return Clause(string, params)
 
 
 def _strip(string):
@@ -69,7 +108,7 @@ class OperatorMetaclass(type):
     @staticmethod
     def make_fn(operator):
         def op_fn(value):
-            return f"{operator} %s", str(value)
+            return OperatorClause(operator, value)
 
         return op_fn
 
@@ -82,41 +121,9 @@ class OperatorMetaclass(type):
 
 class op(metaclass=OperatorMetaclass):
     @staticmethod
-    def _parse_clause(clause):
-        if isinstance(clause, tuple):
-            # This is a logical operator you can combine clauses with.
-            # It's already parsed so we can pass it on. e.g:
-            # > op.or_({Person.id: 1}, {Person.id: 2})
-            # > op.not_null(Person.id)
-            string = clause[0]
-            params = clause[1]
-
-        if isinstance(clause, dict):
-            # A clause is a dict with one key/value. E.g:
-            # {User.email: "email@mail.com"}
-            # In a `where` function you would add multiple clauses like this:
-            # > .where({User.name: "beanpuppy"}, {User.archive: 0})
-            # This makes the following SQL:
-            # `where User.name = "beanpuppy" and User.archive = 0`
-            key, value = list(clause.items())[0]
-
-            if isinstance(value, tuple):
-                # This is normally a clause from the operator class:
-                # > {Person.id: op.gt(1)}
-                string = f"{str(key)} {value[0]} "
-                params = (value[1],)
-            else:
-                # The default way clauses are:
-                # > {Person.id: 1}
-                string = f"{str(key)} = %s "
-                params = (value,)
-
-        return string, params
-
-    @staticmethod
     def _clause_args(func):
         def wrapper(cls, *args):
-            args = [op._parse_clause(a) for a in args]
+            args = [_parse_clause(a) for a in args]
             return func(cls, *args)
 
         return wrapper
@@ -124,7 +131,7 @@ class op(metaclass=OperatorMetaclass):
     @classmethod
     @_clause_args.__func__
     def or_(cls, cond_1, cond_2):
-        return (
+        return ConditionalClause(
             f"{_strip(cond_1[0])} or {_strip(cond_2[0])} ",
             (*cond_1[1], *cond_2[1]),
         )
@@ -132,18 +139,18 @@ class op(metaclass=OperatorMetaclass):
     @classmethod
     @_clause_args.__func__
     def and_(cls, cond_1, cond_2):
-        return (
+        return ConditionalClause(
             f"{_strip(cond_1[0])} and {_strip(cond_2[0])} ",
             (*cond_1[1], *cond_2[1]),
         )
 
     @classmethod
     def is_null(cls, field):
-        return "{str(field)} is null ", ()
+        return ConditionalClause("{str(field)} is null ", ())
 
     @classmethod
     def not_null(cls, field):
-        return "{str(field)} is not null ", ()
+        return ConditionalClause("{str(field)} is not null ", ())
 
 
 class Field:
@@ -151,9 +158,10 @@ class Field:
         self.type = type
         self.name = name
 
-        self.primary_key = kwargs.get("primary_key") is True
         self.null = kwargs.get("null")
         self.default = kwargs.get("default")
+        self.primary_key = kwargs.get("primary_key") is True
+        self.unique = kwargs.get("unique") is True
 
     @property
     def full_name(self):
@@ -175,6 +183,7 @@ class Schema:
     table_name = None
 
     def __init__(self):
+        # Bind schema to fields
         for key in dir(self):
             f = getattr(self, key)
 
@@ -199,7 +208,7 @@ class Schema:
 
     @classmethod
     def _get_fields(cls):
-        pk = None
+        pk = None  # Is primary_key or unique
         fields = {}
 
         for key in dir(cls):
@@ -208,8 +217,15 @@ class Schema:
             if isinstance(f, Field):
                 fields[key] = f
 
-                if f.primary_key is True or (key == "id" and pk is None):
-                    pk = key
+                if pk is None:
+                    if f.primary_key is True:
+                        pk = key
+
+                    if f.unique is True:
+                        pk = key
+
+                    if key == "id":
+                        pk = key
 
         return pk, fields
 
@@ -269,6 +285,13 @@ class Schema:
 
         return cls._database_.sql(sql, params)
 
+    @classmethod
+    def delete(cls, row):
+        # Deletes single row - look at Query for batch
+        pk, fields = cls._get_fields()
+        sql = f"delete from {cls.table_name} where {pk} = {row[pk]}"
+        return cls._database_.sql(sql, [])
+
 
 class QueryMetaclass(type):
 
@@ -308,12 +331,17 @@ class Query(metaclass=QueryMetaclass):
             raise EstoultError("Schema(s) is/are required")
 
         self.schemas = schemas
+        self.schema = schemas[0]
         [s() for s in schemas]
 
         self.method = None
 
         self._query = ""
         self._params = []
+
+    @property
+    def subquery(self):
+        return Subquery(f"({self._query})", self._params)
 
     def select(self, *args):
         self.method = "select"
@@ -323,17 +351,15 @@ class Query(metaclass=QueryMetaclass):
         else:
             args = ", ".join([str(a) for a in args])
 
-        self._query = f"select {args} from {self.schemas[0].table_name}\n"
+        self._query = f"select {args} from {self.schema.table_name}\n"
 
         return self
 
     def update(self, changeset):
         self.method = "sql"
-        schema = self.schemas[0]
+        self._query = f"update {self.schema.table_name} set "
 
-        self._query = f"update {schema.table_name} set "
-
-        _, changeset = schema.validate(changeset, updating=True)
+        _, changeset = self.schema.validate(changeset, updating=True)
 
         for key, value in changeset.items():
             self._query += f"{str(key)} = %s, "
@@ -341,6 +367,11 @@ class Query(metaclass=QueryMetaclass):
 
         self._query = f"{_strip(self._query)}\n"
 
+        return self
+
+    def delete(self, row):
+        self.method = "sql"
+        self._query = f"delete from {self.schema.table_name} "
         return self
 
     def get(self, *args):
@@ -356,7 +387,7 @@ class Query(metaclass=QueryMetaclass):
         self._query += "where "
 
         for clause in clauses:
-            string, params = op._parse_clause(clause)
+            string, params = _parse_clause(clause)
 
             self._query += f"{string} and "
             self._params.extend(params)
@@ -383,9 +414,7 @@ class Query(metaclass=QueryMetaclass):
 
     def __str__(self):
         return f"""
-            ({self.schemas[0]
-            .mogrify(self._query, self._params)
-            .decode("utf-8")})
+            {self.schema.mogrify(self._query, self._params).decode("utf-8")}
         """.replace(
             "\n", " "
         ).strip()
