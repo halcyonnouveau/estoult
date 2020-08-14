@@ -69,15 +69,6 @@ def parse_clause(clause):
 
         key, value = list(clause.items())[0]
 
-        if isinstance(value, InOperatorClause):
-            string = f"{str(key)} {value.operator} "
-
-            if isinstance(value.operand, Subquery):
-                string += value.operand.query
-                params = value.operand.params
-            else:
-                params = value.operand
-
         if isinstance(value, OperatorClause):
             # This is normally a clause from the operator class:
             # > {Person.id: op.gt(1)}
