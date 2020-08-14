@@ -52,13 +52,15 @@ class Person(BaseSchema):
 
     @classmethod
     def validate(cls, row, **kwargs):
-        pk, changeset = super().validate(row, **kwargs)
+        # Changeset is the row to be inserted/updated after any defaults
+        # have been applied
+        changeset = super().validate(row, **kwargs)
 
         # Do some additional validation here
         if changeset.get("email", "").endswith(".fr"):
             raise Exception("The French are banned.")
 
-        return pk, changeset
+        return changeset
 
 
 # Select all users

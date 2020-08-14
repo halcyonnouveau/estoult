@@ -206,7 +206,6 @@ class Field:
         self.null = kwargs.get("null")
         self.default = kwargs.get("default")
         self.primary_key = kwargs.get("primary_key") is True
-        self.unique = kwargs.get("unique") is True
 
     @property
     def full_name(self):
@@ -222,53 +221,54 @@ class Field:
         return str(self) == comp
 
 
-class Schema:
+class SchemaMetaclass(type):
+    def __new__(cls, clsname, bases, attrs):
+        c = super(SchemaMetaclass, cls).__new__(cls, clsname, bases, attrs)
+
+        for key in dir(c):
+            f = getattr(c, key)
+
+            if isinstance(f, Field):
+                f.schema = c
+
+        return c
+
+    @property
+    def fields(cls):
+        return [
+            getattr(cls, key)
+            for key in dir(cls)
+            if isinstance(getattr(cls, key), Field)
+        ]
+
+    @property
+    def pk(cls):
+        pk = None
+
+        for field in cls.fields:
+            if field.primary_key is True:
+                return field
+
+            if field.name == "id":
+                pk = field
+
+        return pk
+
+
+class Schema(metaclass=SchemaMetaclass):
 
     _database_ = None
     table_name = None
 
-    def __init__(self):
-        # Bind schema to fields
-        for key in dir(self):
-            f = getattr(self, key)
-
-            if isinstance(f, Field):
-                f.schema = self
-
-    @classmethod
-    def _get_fields(cls):
-        pk = None  # Is primary_key or unique
-        fields = {}
-
-        for key in dir(cls):
-            f = getattr(cls, key)
-
-            if isinstance(f, Field):
-                fields[key] = f
-
-                if pk is None:
-                    if f.unique is True:
-                        pk = key
-
-                    if key == "id":
-                        pk = key
-
-                # `primary_key` takes priority over everything else
-                if f.primary_key is True:
-                    pk = key
-
-        return pk, fields
-
     @classmethod
     def validate(cls, row, updating=False):
-        pk, fields = cls._get_fields()
         changeset = {}
 
         if updating is not True:
-            updating = row.get(pk) is not None
+            updating = row.get(cls.pk.name) is not None
 
-        for name, field in fields.items():
-            new_value = row.get(name) or row.get(str(field))
+        for field in cls.fields:
+            new_value = row.get(field.name)
 
             if new_value is None and updating is True:
                 continue
@@ -283,13 +283,13 @@ class Schema:
             if field.null is False and new_value is None:
                 raise FieldError(f"{str(field)} cannot be None")
 
-            changeset[name] = new_value
+            changeset[field.name] = new_value
 
-        return pk, changeset
+        return changeset
 
     @classmethod
     def insert(cls, obj):
-        _, changeset = cls.validate(obj)
+        changeset = cls.validate(obj)
         sql = f"insert into {cls.table_name} set "
         params = []
 
@@ -303,7 +303,7 @@ class Schema:
     def update(cls, old, new):
         # This updates a single row only, if you want to update several
         # use `update` in `Query`
-        pk, changeset = cls.validate({**old, **new})
+        changeset = cls.validate({**old, **new})
         sql = f"update {cls.table_name} set "
         params = []
 
@@ -311,15 +311,14 @@ class Schema:
             params.append(value)
             sql += f"{str(key)} = %s, "
 
-        sql = f"{strip(sql)} where {pk} = {changeset[pk]}"
+        sql = f"{strip(sql)} where {str(cls.pk)} = {changeset[cls.pk.name]}"
 
         return cls._database_.sql(sql, params)
 
     @classmethod
     def delete(cls, row):
         # Deletes single row - look at `Query` for batch
-        pk, fields = cls._get_fields()
-        sql = f"delete from {cls.table_name} where {pk} = {row[pk]}"
+        sql = f"delete from {cls.table_name} where {str(cls.pk)} = {row[cls.pk.name]}"
         return cls._database_.sql(sql, [])
 
 
@@ -362,7 +361,6 @@ class Query(metaclass=QueryMetaclass):
 
         self.schemas = schemas
         self.schema = schemas[0]
-        [s() for s in schemas]
 
         self._method = None
 
