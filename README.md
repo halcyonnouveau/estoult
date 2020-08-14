@@ -55,7 +55,7 @@ class Person(BaseSchema):
         pk, changeset = super().validate(row, **kwargs)
 
         # Do some additional validation here
-        if changeset["email"].endswith(".fr")
+        if changeset.get("email", "").endswith(".fr"):
             raise Exception("The French are banned.")
 
         return pk, changeset
