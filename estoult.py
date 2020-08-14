@@ -180,7 +180,7 @@ class op(metaclass=OperatorMetaclass):
             return InOperatorClause("in", value)
 
         if isinstance(value, list) or isinstance(value, tuple):
-            placeholders = strip(", ".join(["%s"] * len(value)))
+            placeholders = ", ".join(["%s"] * len(value))
             return InOperatorClause(f"in ({placeholders})", value)
 
         raise ClauseError("`in` value can only be `subquery`, `list`, or `tuple`")
