@@ -52,7 +52,7 @@ class InOperatorClause(OperatorClause):
 
 def parse_clause(clause):
     if isinstance(clause, ConditionalClause):
-        return Clause(clause.conditional, clause.params)
+        return Clause(clause.conditional + " ", clause.params)
 
     if isinstance(clause, dict):
         # An unparsed clause is a dict with one key/value. E.g:
@@ -69,10 +69,10 @@ def parse_clause(clause):
         if isinstance(value, OperatorClause):
             # This is normally a clause from the operator class:
             # > {Person.id: op.gt(1)}
-            string = f"{str(key)} {value.operator} "
+            string = f"{str(key)} {value.operator}"
 
             if isinstance(value.operand, Subquery):
-                string += value.operand.query
+                string += " " + value.operand.query
                 params = value.operand.params
             else:
                 params = (
@@ -83,10 +83,10 @@ def parse_clause(clause):
         else:
             # The default way clauses are:
             # > {Person.id: 1}
-            string = f"{str(key)} = %s "
+            string = f"{str(key)} = %s"
             params = (value,)
 
-        return Clause(string, params)
+        return Clause(string + " ", params)
 
     raise ClauseError(f"Clause structure is incorrect: {str(clause)}")
 
@@ -139,7 +139,7 @@ class OperatorMetaclass(type):
     @staticmethod
     def make_fn(operator):
         def op_fn(value):
-            return OperatorClause(f"{operator} %s ", value)
+            return OperatorClause(f"{operator} %s", value)
 
         return op_fn
 
@@ -163,14 +163,14 @@ class op(metaclass=OperatorMetaclass):
     @_clause_args.__func__
     def or_(cls, cond_1, cond_2):
         return ConditionalClause(
-            f"{strip(cond_1[0])} or {strip(cond_2[0])} ", (*cond_1[1], *cond_2[1]),
+            f"({strip(cond_1[0])} or {strip(cond_2[0])})", (*cond_1[1], *cond_2[1]),
         )
 
     @classmethod
     @_clause_args.__func__
     def and_(cls, cond_1, cond_2):
         return ConditionalClause(
-            f"{strip(cond_1[0])} and {strip(cond_2[0])} ", (*cond_1[1], *cond_2[1]),
+            f"({strip(cond_1[0])} and {strip(cond_2[0])})", (*cond_1[1], *cond_2[1]),
         )
 
     @classmethod
@@ -187,15 +187,15 @@ class op(metaclass=OperatorMetaclass):
 
     @classmethod
     def not_(cls, field):
-        return ConditionalClause("not {str(field)} ", ())
+        return ConditionalClause("not {str(field)}", ())
 
     @classmethod
     def is_null(cls, field):
-        return ConditionalClause("{str(field)} is null ", ())
+        return ConditionalClause("{str(field)} is null", ())
 
     @classmethod
     def not_null(cls, field):
-        return ConditionalClause("{str(field)} is not null ", ())
+        return ConditionalClause("{str(field)} is not null", ())
 
 
 class Field:
@@ -339,7 +339,7 @@ class QueryMetaclass(type):
     def make_join_fn(join_type):
         def join_fn(self, schema, on):
             if schema not in self.schemas:
-                raise EstoultError(f"Schema not added to Query")
+                raise EstoultError("Schema not added to Query")
 
             q = f"{str(on[0])} = {str(on[1])}"
             self._query += f"{join_type} {schema.table_name} on {q}\n"
@@ -401,7 +401,7 @@ class Query(metaclass=QueryMetaclass):
 
     def delete(self, row):
         self.method = "sql"
-        self._query = f"delete from {self.schema.table_name} "
+        self._query = f"delete from {self.schema.table_name}\n"
         return self
 
     def get(self, *args):
