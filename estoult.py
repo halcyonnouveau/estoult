@@ -19,6 +19,9 @@ except ImportError:
 
 __version__ = "0.1.0"
 __all__ = [
+    "EstoultError",
+    "ClauseError",
+    "FieldError",
     "fn",
     "op",
     "Field",
