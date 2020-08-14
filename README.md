@@ -51,10 +51,10 @@ class Person(BaseSchema):
     last_name = Field(str, "last_name")
 
     @classmethod
-    def validate(cls, row, **kwargs):
+    def validate(cls, row):
         # Changeset is the row to be inserted/updated after any defaults
         # have been applied
-        changeset = super().validate(row, **kwargs)
+        changeset = super().validate(row)
 
         # Do some additional validation here
         if changeset.get("email", "").endswith(".fr"):

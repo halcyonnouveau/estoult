@@ -261,11 +261,10 @@ class Schema(metaclass=SchemaMetaclass):
     table_name = None
 
     @classmethod
-    def validate(cls, row, updating=False):
+    def validate(cls, row):
         changeset = {}
 
-        if updating is not True:
-            updating = row.get(cls.pk.name) is not None
+        updating = row.get(cls.pk.name) is not None
 
         for field in cls.fields:
             new_value = row.get(field.name)
