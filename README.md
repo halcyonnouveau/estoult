@@ -105,9 +105,3 @@ Person.update({"id": person_id}, {"email": "astolfo@waifu.church"})
 ## Documentation
 
 Documentation is in progress.
-
-## FAQ
-
-- **Q:** Is Estoult an ORM?
-
-**A:** No.
