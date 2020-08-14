@@ -54,9 +54,6 @@ def parse_clause(clause):
     if isinstance(clause, ConditionalClause):
         return Clause(clause.conditional, clause.params)
 
-    if isinstance(clause, Clause):
-        return Clause(clause.conditional, clause.params)
-
     if isinstance(clause, dict):
         # An unparsed clause is a dict with one key/value. E.g:
         # {User.email: "email@mail.com"}
