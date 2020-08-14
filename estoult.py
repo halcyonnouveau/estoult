@@ -32,11 +32,11 @@ class EstoultError(Exception):
     pass
 
 
-class ClauseError(ValueError):
+class ClauseError(EstoultError):
     pass
 
 
-class FieldError(ValueError):
+class FieldError(EstoultError):
     pass
 
 
@@ -46,8 +46,15 @@ ConditionalClause = namedtuple("ConditionalClause", ["conditional", "params"])
 OperatorClause = namedtuple("OperatorClause", ["operator", "operand"])
 
 
+class InOperatorClause(OperatorClause):
+    pass
+
+
 def parse_clause(clause):
     if isinstance(clause, ConditionalClause):
+        return Clause(clause.conditional, clause.params)
+
+    if isinstance(clause, Clause):
         return Clause(clause.conditional, clause.params)
 
     if isinstance(clause, dict):
@@ -62,16 +69,29 @@ def parse_clause(clause):
 
         key, value = list(clause.items())[0]
 
+        if isinstance(value, InOperatorClause):
+            string = f"{str(key)} {value.operator} "
+
+            if isinstance(value.operand, Subquery):
+                string += value.operand.query
+                params = value.operand.params
+            else:
+                params = value.operand
+
         if isinstance(value, OperatorClause):
             # This is normally a clause from the operator class:
             # > {Person.id: op.gt(1)}
-            string = f"{str(key)} {value.operator} %s "
+            string = f"{str(key)} {value.operator} "
 
             if isinstance(value.operand, Subquery):
-                string = string % (value.operand.query,)
+                string += value.operand.query
                 params = value.operand.params
             else:
-                params = (value.operand,)
+                params = (
+                    value.operand
+                    if isinstance(value, InOperatorClause)
+                    else (value.operand,)
+                )
         else:
             # The default way clauses are:
             # > {Person.id: 1}
@@ -126,13 +146,12 @@ class OperatorMetaclass(type):
         "gt": ">",
         "gt_eq": ">=",
         "n_eq": "<>",
-        "in_": "in",
     }
 
     @staticmethod
     def make_fn(operator):
         def op_fn(value):
-            return OperatorClause(operator, value)
+            return OperatorClause(f"{operator} %s ", value)
 
         return op_fn
 
@@ -165,6 +184,18 @@ class op(metaclass=OperatorMetaclass):
         return ConditionalClause(
             f"{strip(cond_1[0])} and {strip(cond_2[0])} ", (*cond_1[1], *cond_2[1]),
         )
+
+    @classmethod
+    def in_(cls, value):
+        # `in` gets it's own special clause handling
+        if isinstance(value, Subquery):
+            return InOperatorClause("in", value)
+
+        if isinstance(value, list) or isinstance(value, tuple):
+            placeholders = strip(", ".join(["%s"] * len(value)))
+            return InOperatorClause(f"in ({placeholders})", value)
+
+        raise ClauseError("`in` value can only be `subquery`, `list`, or `tuple`")
 
     @classmethod
     def not_(cls, field):
@@ -228,14 +259,15 @@ class Schema:
                 fields[key] = f
 
                 if pk is None:
-                    if f.primary_key is True:
-                        pk = key
-
                     if f.unique is True:
                         pk = key
 
                     if key == "id":
                         pk = key
+
+                # `primary_key` takes priority over everything else
+                if f.primary_key is True:
+                    pk = key
 
         return pk, fields
 
@@ -282,7 +314,7 @@ class Schema:
     @classmethod
     def update(cls, old, new):
         # This updates a single row only, if you want to update several
-        # use `update` in Query
+        # use `update` in `Query`
         pk, changeset = cls.validate({**old, **new})
         sql = f"update {cls.table_name} set "
         params = []
@@ -297,7 +329,7 @@ class Schema:
 
     @classmethod
     def delete(cls, row):
-        # Deletes single row - look at Query for batch
+        # Deletes single row - look at `Query` for batch
         pk, fields = cls._get_fields()
         sql = f"delete from {cls.table_name} where {pk} = {row[pk]}"
         return cls._database_.sql(sql, [])

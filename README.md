@@ -1,8 +1,14 @@
 # Estoult
 
-Estoult is a Python data mapper and integrated query builder for SQL databases.
+Estoult is a Python toolkit for data mapping with an integrated query builder for SQL databases.
 
-It is **NOT** an ORM.
+Features:
+
+- Not an ORM: Estoult treats the data, not objects, as first class citizens.
+- No DSL: Query building is done using functions instead of overwriting Python operators.
+- Composable (sub)queries: Create subqueries and store them for later use.
+- Easy debugging: Display any generated SQL in a readable format.
+- Performant as raw SQL: Estoult is **NOT** an ORM.
 
 ## Example
 
