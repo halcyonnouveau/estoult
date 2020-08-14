@@ -364,7 +364,7 @@ class Query(metaclass=QueryMetaclass):
         self.schema = schemas[0]
         [s() for s in schemas]
 
-        self.method = None
+        self._method = None
 
         self._query = ""
         self._params = []
@@ -374,7 +374,7 @@ class Query(metaclass=QueryMetaclass):
         return Subquery(f"({self._query})", self._params)
 
     def select(self, *args):
-        self.method = "select"
+        self._method = "select"
 
         if len(args) < 1:
             args = "*"
@@ -386,7 +386,7 @@ class Query(metaclass=QueryMetaclass):
         return self
 
     def update(self, changeset):
-        self.method = "sql"
+        self._method = "sql"
         self._query = f"update {self.schema.table_name} set "
 
         _, changeset = self.schema.validate(changeset, updating=True)
@@ -400,18 +400,18 @@ class Query(metaclass=QueryMetaclass):
         return self
 
     def delete(self, row):
-        self.method = "sql"
+        self._method = "sql"
         self._query = f"delete from {self.schema.table_name}\n"
         return self
 
     def get(self, *args):
         self.select(*args)
-        self.method = "get"
+        self._method = "get"
         return self
 
     def get_or_none(self, *args):
         self.select(*args)
-        self.method = "get_or_none"
+        self._method = "get_or_none"
         return self
 
     def union(self):
@@ -444,7 +444,7 @@ class Query(metaclass=QueryMetaclass):
         return self
 
     def execute(self):
-        func = getattr(self.schema._database_, self.method)
+        func = getattr(self.schema._database_, self._method)
         return func(self._query, self._params)
 
     def __str__(self):
