@@ -101,3 +101,13 @@ Person.update({"id": person_id}, {"email": "astolfo@waifu.church"})
     .where({Person.last_name: "Last Name"})
     .execute())
 ```
+
+## Documentation
+
+Documentation is in progress.
+
+## FAQ
+
+- **Q:** Is Estoult an ORM?
+
+**A:** No.
