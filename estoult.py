@@ -19,14 +19,14 @@ except ImportError:
 
 __version__ = "0.1.0"
 __all__ = [
-    "EstoultError",
     "ClauseError",
+    "Database",
+    "EstoultError",
+    "Field",
     "FieldError",
     "fn",
     "op",
-    "Field",
     "Query",
-    "Database",
 ]
 
 
