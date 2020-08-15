@@ -106,6 +106,7 @@ class PooledDatabase(object):
         if conn is None:
             if self._max_connections and (len(self._in_use) >= self._max_connections):
                 raise MaxConnectionsExceeded("Exceeded maximum connections.")
+
             conn = super(PooledDatabase, self)._connect()
             ts = time.time() - random.random() / 1000
             key = self.conn_key(conn)
@@ -127,23 +128,22 @@ class PooledDatabase(object):
 
     def _close(self, conn, close_conn=False):
         key = self.conn_key(conn)
+
         if close_conn:
             super(PooledDatabase, self)._close(conn)
         elif key in self._in_use:
             pool_conn = self._in_use.pop(key)
+
             if self._stale_timeout and self._is_stale(pool_conn.timestamp):
                 super(PooledDatabase, self)._close(conn)
             elif self._can_reuse(conn):
                 heapq.heappush(self._connections, (pool_conn.timestamp, conn))
 
     def manual_close(self):
-        """
-        Close the underlying connection without returning it to the pool.
-        """
+        # Close the underlying connection without returning it to the pool.
         if self.is_closed():
             return False
 
-        # Obtain reference to the connection in-use by the calling thread.
         conn = self.connection()
 
         # A connection will only be re-added to the available list if it is
