@@ -25,7 +25,6 @@ __all__ = [
     "fn",
     "op",
     "Field",
-    "Schema",
     "Query",
     "Database",
 ]
@@ -96,6 +95,14 @@ def parse_clause(clause):
 
 def strip(string):
     return string.rstrip(" ").rstrip(",").rstrip("and")
+
+
+def replace_placeholders(func):
+    def wrapper(self, query, *args, **kwargs):
+        query = query.replace("%s", self.placeholder)
+        return func(self, query, *args, **kwargs)
+
+    return wrapper
 
 
 class FunctionMetaclass(type):
@@ -365,7 +372,6 @@ class Query(metaclass=QueryMetaclass):
         self.schema = schemas[0]
 
         self._method = None
-
         self._query = ""
         self._params = []
 
@@ -458,27 +464,38 @@ class Query(metaclass=QueryMetaclass):
 
 
 class Database:
-    def __init__(self, *args, **kwargs):
-        self.connect = Database.make_connect_func(**kwargs)
+    def __init__(self, autoconnect=True, *args, **kwargs):
+        self.autoconnect = autoconnect
 
         self.Schema = Schema
         self.Schema._database_ = self
 
-    @staticmethod
-    def make_connect_func(**kwargs):
-        def connect():
-            return mysql.connect(**kwargs)
+        self.conn = None
+        self._connect = self._make__connect_func(args, kwargs)
 
-        return connect
+    def connect(self):
+        self.conn = self._connect()
+
+    def _close(self):
+        self.conn.close()
+
+    def close(self):
+        return self._close
+
+    def get_connection(self):
+        if self.autoconnect is False:
+            return self.conn
+        else:
+            return self._connect()
 
     @contextmanager
     def transaction(self, commit=True):
-        conn = self.connect()
+        conn = self.get_connection()
         cursor = conn.cursor()
 
         try:
             yield cursor
-        except mysql.DatabaseError as err:
+        except Exception as err:
             conn.rollback()
             raise err
         else:
@@ -487,8 +504,10 @@ class Database:
             else:
                 conn.rollback()
         finally:
-            conn.close()
+            if self.autoconnect is True:
+                conn.close()
 
+    @replace_placeholders
     def mogrify(self, query, params):
         with self.transaction(commit=False) as cursor:
             if psycopg2:
@@ -497,55 +516,76 @@ class Database:
             cursor.execute(query, params)
             return cursor._executed
 
+    @replace_placeholders
     def select(self, query, params):
-        conn = self.connect()
-
-        try:
-            cursor = conn.cursor()
+        with self.transaction() as cursor:
             cursor.execute(query, params)
             cols = [col[0] for col in cursor.description]
             return [dict(zip(cols, row)) for row in cursor.fetchall()]
-        except Exception as err:
-            raise err
-        finally:
-            cursor.close()
-            conn.close()
 
+    @replace_placeholders
     def get(self, query, params):
         row = self.select(query, params)
         return row[0]
 
+    @replace_placeholders
     def get_or_none(self, query, params):
         try:
             return self.get(query, params)
         except IndexError:
             return None
 
+    @replace_placeholders
     def insert(self, query, params):
-        conn = self.connect()
-
-        try:
-            cursor = conn.cursor()
+        with self.transaction() as cursor:
             cursor.execute(query, params)
             row_id = cursor.lastrowid
-            conn.commit()
             return row_id
-        except Exception as err:
-            conn.rollback()
-            raise err
-        finally:
-            cursor.close()
 
+    @replace_placeholders
     def sql(self, query, params):
-        conn = self.connect()
-
-        try:
-            cursor = conn.cursor()
+        with self.transaction() as cursor:
             cursor.execute(query, params)
-            conn.commit()
             return True
-        except Exception as err:
-            conn.rollback()
-            raise err
-        finally:
-            cursor.close()
+
+
+class MySQLDatabase(Database):
+    def __init__(self, *args, **kwargs):
+        self.placeholder = "%s"
+
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def _make__connect_func(cls, args, kwargs):
+        def _connect():
+            return mysql.connect(*args, **kwargs)
+
+        return _connect
+
+
+class PostgreSQLDatabase(Database):
+    def __init__(self, *args, **kwargs):
+        self.placeholder = "%s"
+
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def _make__connect_func(cls, args, kwargs):
+        def _connect():
+            return psycopg2.connect(*args, **kwargs)
+
+        return _connect
+
+
+class SQLiteDatabase(Database):
+    def __init__(self, *args, **kwargs):
+        self.placeholder = "?"
+
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def _make__connect_func(cls, args, kwargs):
+        def _connect():
+            return sqlite3.connect(*args, **kwargs)
+
+        return _connect

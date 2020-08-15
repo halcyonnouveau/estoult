@@ -24,6 +24,7 @@ setup(
     author_email="justin@justinduch.com",
     url="https://github.com/halcyonnouveau/estoult",
     py_modules=["estoult"],
+    packages=["grimoire"],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",

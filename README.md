@@ -1,6 +1,6 @@
 # Estoult
 
-Estoult is a Python toolkit for data mapping with an integrated query builder for SQL databases.
+Estoult is a Python toolkit for data mapping with an integrated query builder for SQL databases. It currently supports MySQL, PostgreSQL, and SQLite.
 
 Features:
 
@@ -13,9 +13,9 @@ Features:
 ## Example
 
 ```python
-from estoult import Database, Query, Field, fn, op
+from estoult import MySQLDatabase, Query, Field, fn, op
 
-db = Database(
+db = MySQLDatabase(
     user="user",
     password="pass",
     port="port",
