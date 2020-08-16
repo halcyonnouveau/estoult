@@ -510,9 +510,6 @@ class Database:
     @replace_placeholders
     def mogrify(self, query, params):
         with self.transaction(commit=False) as cursor:
-            if psycopg2:
-                return cursor.mogrify(query, params)
-
             cursor.execute(query, params)
             return cursor._executed
 
@@ -575,6 +572,10 @@ class PostgreSQLDatabase(Database):
             return psycopg2.connect(*args, **kwargs)
 
         return _connect
+
+    @replace_placeholders
+    def mogrify(self, query, params):
+        return cursor.mogrify(query, params)
 
 
 class SQLiteDatabase(Database):

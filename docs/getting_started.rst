@@ -82,3 +82,74 @@ To update the row, we use ``update``:
    Book.update(new_book, {"name": "Slaughterhouse-Five"})
 
 Here we updated the row ``new_book`` with a new ``name``.
+
+Fetching a single record
+------------------------
+
+``Schema`` is for inserting/updating a single row. When retrieving data or working with multiple rows we use the ``Query`` class.
+
+.. code-block:: python
+
+   my_book = (
+      Query(Book)
+      .get()
+      .where({Book.id: 1})
+      .execute()
+   )
+
+   print(my_book["id"])
+
+``Query`` builds your SQL query using a wide range of functions. We are using ``get`` to only retrieve one row and ``where`` to specify which. ``where`` accepts a list of dictionaries (or ``op``, but that is for later) to send as arguments, we are using ``{Book.id: 1}`` which translates to ``Book.id = 1`` in SQL. When the query is built we call ``execute`` to run it.
+
+Fetching multiple records
+-------------------------
+
+Instead of using ``get``, use ``select`` to get multiple records.
+
+.. code-block:: python
+
+   my_books = (
+      Query(Book)
+      .select()
+      .where()
+      .execute()
+   )
+
+This will get all books.
+
+
+Updating multiple records
+-------------------------
+
+``Query`` is used to update mutiple records as well.
+
+.. code-block:: python
+
+   update_books = {"name": "Casseur de Logistille"}
+
+   (Query(Book)
+      .update(update_books)
+      .where({Book.id: op.gt(0)})
+      .execute())
+
+This is updating all books with an ``id`` greater than ``0``.
+
+Deleting records
+----------------
+
+Now that we've covered inserting, reading and updaing. The last thing is how to delete records in Estoult.
+
+Similar to updating, we can use ``Schema`` for a single row or ``Query`` for multiple rows. Let's delete ``my_book`` which we retrieved earlier.
+
+.. code-block:: python
+
+   # Single book
+   Book.delete(my_book)
+
+   # Multiple books
+   (Query(Book)
+      .delete()
+      .where({Book.id: op.gt_eq(my_book["id"])})
+      .execute())
+
+The ``Query`` is deleting all books which have an ``id`` greater or equal to ``my_book["id"]``.
