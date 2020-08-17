@@ -53,7 +53,7 @@ class InOperatorClause(OperatorClause):
     pass
 
 
-def parse_clause(clause):
+def _parse_clause(clause):
     if isinstance(clause, ConditionalClause):
         return Clause(clause.conditional + " ", clause.params)
 
@@ -94,8 +94,8 @@ def parse_clause(clause):
     raise ClauseError(f"Clause structure is incorrect: {str(clause)}")
 
 
-def strip(string):
-    return string.rstrip(" ").rstrip(",").rstrip("and")
+def _strip(string):
+    return string.r_strip(" ").r_strip(",").r_strip("and")
 
 
 def _replace_placeholders(func):
@@ -183,7 +183,7 @@ class op(metaclass=OperatorMetaclass):
     @staticmethod
     def _clause_args(func):
         def wrapper(cls, *args):
-            args = [parse_clause(a) for a in args]
+            args = [_parse_clause(a) for a in args]
             return func(cls, *args)
 
         return wrapper
@@ -192,14 +192,14 @@ class op(metaclass=OperatorMetaclass):
     @_clause_args.__func__
     def or_(cls, cond_1, cond_2):
         return ConditionalClause(
-            f"({strip(cond_1[0])} or {strip(cond_2[0])})", (*cond_1[1], *cond_2[1]),
+            f"({_strip(cond_1[0])} or {_strip(cond_2[0])})", (*cond_1[1], *cond_2[1]),
         )
 
     @classmethod
     @_clause_args.__func__
     def and_(cls, cond_1, cond_2):
         return ConditionalClause(
-            f"({strip(cond_1[0])} and {strip(cond_2[0])})", (*cond_1[1], *cond_2[1]),
+            f"({_strip(cond_1[0])} and {_strip(cond_2[0])})", (*cond_1[1], *cond_2[1]),
         )
 
     @classmethod
@@ -325,7 +325,7 @@ class Schema(metaclass=SchemaMetaclass):
             params.append(value)
             sql += f"{str(key)} = %s, "
 
-        return cls._database_.insert(strip(sql), params)
+        return cls._database_.insert(_strip(sql), params)
 
     @classmethod
     def update(cls, old, new):
@@ -339,7 +339,7 @@ class Schema(metaclass=SchemaMetaclass):
             params.append(value)
             sql += f"{str(key)} = %s, "
 
-        sql = f"{strip(sql)} where {str(cls.pk)} = {changeset[cls.pk.name]}"
+        sql = f"{_strip(sql)} where {str(cls.pk)} = {changeset[cls.pk.name]}"
 
         return cls._database_.sql(sql, params)
 
@@ -420,7 +420,7 @@ class Query(metaclass=QueryMetaclass):
             self._query += f"{str(key)} = %s, "
             self._params.append(str(value))
 
-        self._query = f"{strip(self._query)}\n"
+        self._query = f"{_strip(self._query)}\n"
 
         return self
 
@@ -447,12 +447,12 @@ class Query(metaclass=QueryMetaclass):
         self._query += "where "
 
         for clause in clauses:
-            string, params = parse_clause(clause)
+            string, params = _parse_clause(clause)
 
             self._query += f"{string} and "
             self._params.extend(params)
 
-        self._query = f"{strip(self._query)}\n"
+        self._query = f"{_strip(self._query)}\n"
 
         return self
 
@@ -501,7 +501,7 @@ class Query(metaclass=QueryMetaclass):
                 .decode("utf-8"))}
         """.replace(
             "\n", " "
-        ).strip()
+        )._strip()
 
 
 class Database:
@@ -546,6 +546,7 @@ class Database:
     def sql(self, query, params):
         self.cursor.execute(query, params)
 
+    @_get_connection
     def mogrify(self, query, params):
         with self.atomic(commit=False):
             self.sql(query, params)
