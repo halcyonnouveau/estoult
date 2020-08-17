@@ -1,6 +1,5 @@
 from collections import namedtuple
 from contextlib import contextmanager
-from functools import wraps
 
 try:
     import sqlite3
@@ -18,7 +17,7 @@ except ImportError:
     mysql = None
 
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = [
     "ClauseError",
     "Database",
