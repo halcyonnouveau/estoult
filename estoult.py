@@ -1,5 +1,6 @@
 from collections import namedtuple
-from functools import wraps, partial
+from contextlib import contextmanager
+from functools import wraps
 
 try:
     import sqlite3
@@ -101,6 +102,24 @@ def _replace_placeholders(func):
     def wrapper(self, query, *args, **kwargs):
         query = query.replace("%s", self.placeholder)
         return func(self, query, *args, **kwargs)
+
+    return wrapper
+
+
+def _get_connection(func):
+    def wrapper(self, *args, **kwargs):
+        if self.autoconnect is True:
+            self._connect()
+
+        if self.cursor is None:
+            self.cursor = self.conn.cursor()
+
+        f = func(self, *args, **kwargs)
+
+        if self.autoconnect is True:
+            self.conn.close()
+
+        return f
 
     return wrapper
 
@@ -438,27 +457,36 @@ class Query(metaclass=QueryMetaclass):
         return self
 
     def limit(self, *args):
-        # .limit(1) or limit(1, 2)
+        # Example: .limit(1) or limit(1, 2)
         if len(args) == 1:
             self._query += "limit %s\n"
         elif len(args) == 2:
             # `offset` works in mysql and postgres
             self._query += "limit %s offset %s\n"
         else:
-            raise EstoultError("`limit` has too many arguments.")
+            raise EstoultError("`limit` has too many arguments")
 
         self._params.extend(args)
 
         return self
 
     def order_by(self, *args):
-        # .order_by({Frog.id: "asc"}, {Frog.name: "desc"})
-        s = ", ".join(["%s %s" for a in args])
-        # Why can't we have list unpacking in comprehensions >:(
-        params = [v for a in args for kv in a.items() for v in kv]
+        # Example: .order_by(Frog.id, {Frog.name: "desc"})
+        params = []
 
-        self._query += f"limit {s}\n"
-        self._params.extend(params)
+        for a in args:
+            if isinstance(a, dict):
+                for k, v in a.items():
+                    if v != "asc" and v != "desc":
+                        raise EstoultError("Value must be 'asc' or 'desc'")
+
+                    params.extend([str(k), v])
+            else:
+                params.extend([str(a, "asc")])
+
+        s = ", ".join(["%s %s" for a in args]) % tuple(params)
+
+        self._query += f"order by {s}\n"
 
         return self
 
@@ -496,56 +524,35 @@ class Database:
     def close(self):
         return self._close
 
-    def atomic(func, commit=False):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            self.cursor = self.conn.cursor()
+    @contextmanager
+    def atomic(self, commit=True):
+        self.cursor = self.conn.cursor()
 
-            try:
-                f = func(self, *args, **kwargs)
-            except Exception as err:
-                self.conn.rollback()
-                raise err
+        try:
+            yield
+        except Exception as err:
+            self.conn.rollback()
+            raise err
+        else:
+            if commit:
+                self.conn.commit()
             else:
-                if commit:
-                    self.conn.commit()
-                else:
-                    self.conn.rollback()
-
+                self.conn.rollback()
+        finally:
             self.cursor = None
 
-            return f
-
-        return wrapper
-
-    def _get_connection(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            if self.autoconnect is True:
-                self._connect()
-
-            self.cursor = self.conn.cursor()
-
-            f = func(self, *args, **kwargs)
-
-            if self.autoconnect is True:
-                self.conn.close()
-
-            return f
-
-        return wrapper
-
     @_replace_placeholders
     @_get_connection
-    @atomic
+    def sql(self, query, params):
+        self.cursor.execute(query, params)
+
     def mogrify(self, query, params):
-        self.cursor.execute(query, params)
-        return self.cursor._executed
+        with self.atomic(commit=False):
+            self.sql(query, params)
+            return self.cursor._executed
 
-    @_replace_placeholders
-    @_get_connection
     def select(self, query, params):
-        self.cursor.execute(query, params)
+        self.sql(query, params)
         cols = [col[0] for col in self.cursor.description]
         return [dict(zip(cols, row)) for row in self.cursor.fetchall()]
 
@@ -559,18 +566,10 @@ class Database:
         except IndexError:
             return None
 
-    @_replace_placeholders
-    @_get_connection
     def insert(self, query, params):
-        self.cursor.execute(query, params)
+        self.sql(query, params)
         row_id = self.cursor.lastrowid
         return row_id
-
-    @_replace_placeholders
-    @_get_connection
-    def sql(self, query, params):
-        self.cursor.execute(query, params)
-        return True
 
 
 class MySQLDatabase(Database):
@@ -600,7 +599,7 @@ class PostgreSQLDatabase(Database):
 
         return _connect
 
-    @_replace_placeholders
+    @_get_connection
     def mogrify(self, query, params):
         return self.cursor.mogrify(query, params)
 
