@@ -395,7 +395,7 @@ class Query(metaclass=QueryMetaclass):
         self._method = "sql"
         self._query = f"update {self.schema.table_name} set "
 
-        _, changeset = self.schema.validate(changeset, updating=True)
+        changeset = self.schema.validate(changeset, updating=True)
 
         for key, value in changeset.items():
             self._query += f"{str(key)} = %s, "
