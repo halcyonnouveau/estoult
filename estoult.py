@@ -263,34 +263,57 @@ class Schema(metaclass=SchemaMetaclass):
     table_name = None
 
     @classmethod
-    def validate(cls, row):
+    def _cast(cls, row):
         changeset = {}
-
         updating = row.get(cls.pk.name) is not None
 
         for field in cls.fields:
-            new_value = row.get(field.name)
+            value = row.get(field.name)
 
-            if new_value is None and updating is True:
+            if value is not None:
+                value = field.type(value)
+
+            if field.default is not None and updating is False:
+                value = field.default
+
+            changeset[field.name] = value
+
+        return changeset
+
+    @classmethod
+    def _validate(cls, row):
+        changeset = {}
+        updating = row.get(cls.pk.name) is not None
+
+        for field in cls.fields:
+            value = row.get(field.name)
+
+            if value is None and updating is True:
                 continue
 
-            if new_value is None:
-                if field.default is not None:
-                    new_value = field.default
-            else:
-                if isinstance(new_value, field.type) is False:
-                    raise FieldError(f"Incorrect type for {str(field)}.")
-
-            if field.null is False and new_value is None:
+            if field.null is False and value is None:
                 raise FieldError(f"{str(field)} cannot be None")
 
-            changeset[field.name] = new_value
+            changeset[field.name] = value
+
+        return changeset
+
+    @classmethod
+    def casval(cls, row):
+        changeset = cls._cast(row)
+        changeset = cls._validate(changeset)
+
+        # A user specified validation function
+        validate_func = getattr(cls, "validate")
+
+        if validate_func is not None:
+            changeset = validate_func(changeset)
 
         return changeset
 
     @classmethod
     def insert(cls, obj):
-        changeset = cls.validate(obj)
+        changeset = cls.casval(obj)
         sql = f"insert into {cls.table_name} set "
         params = []
 
@@ -304,7 +327,7 @@ class Schema(metaclass=SchemaMetaclass):
     def update(cls, old, new):
         # This updates a single row only, if you want to update several
         # use `update` in `Query`
-        changeset = cls.validate({**old, **new})
+        changeset = cls.casval({**old, **new})
         sql = f"update {cls.table_name} set "
         params = []
 
@@ -387,7 +410,7 @@ class Query(metaclass=QueryMetaclass):
         self._method = "sql"
         self._query = f"update {self.schema.table_name} set "
 
-        changeset = self.schema.validate(changeset, updating=True)
+        changeset = self.schema.casval(changeset)
 
         for key, value in changeset.items():
             self._query += f"{str(key)} = %s, "
