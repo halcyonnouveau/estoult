@@ -94,7 +94,7 @@ def _parse_clause(clause):
 
 
 def _strip(string):
-    return string.r_strip(" ").r_strip(",").r_strip("and")
+    return string.rstrip(" ").rstrip(",").rstrip("and")
 
 
 class FunctionMetaclass(type):
