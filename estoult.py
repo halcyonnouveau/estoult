@@ -97,32 +97,6 @@ def _strip(string):
     return string.r_strip(" ").r_strip(",").r_strip("and")
 
 
-def _replace_placeholders(func):
-    def wrapper(self, query, *args, **kwargs):
-        query = query.replace("%s", self.placeholder)
-        return func(self, query, *args, **kwargs)
-
-    return wrapper
-
-
-def _get_connection(func):
-    def wrapper(self, *args, **kwargs):
-        if self.autoconnect is True:
-            self._connect()
-
-        if self.cursor is None:
-            self.cursor = self.conn.cursor()
-
-        f = func(self, *args, **kwargs)
-
-        if self.autoconnect is True:
-            self.conn.close()
-
-        return f
-
-    return wrapper
-
-
 class FunctionMetaclass(type):
 
     sql_fns = [
@@ -501,6 +475,32 @@ class Query(metaclass=QueryMetaclass):
         """.replace(
             "\n", " "
         )._strip()
+
+
+def _replace_placeholders(func):
+    def wrapper(self, query, *args, **kwargs):
+        query = query.replace("%s", self.placeholder)
+        return func(self, query, *args, **kwargs)
+
+    return wrapper
+
+
+def _get_connection(func):
+    def wrapper(self, *args, **kwargs):
+        if self.autoconnect is True:
+            self._connect()
+
+        if self.cursor is None:
+            self.cursor = self.conn.cursor()
+
+        f = func(self, *args, **kwargs)
+
+        if self.autoconnect is True:
+            self.conn.close()
+
+        return f
+
+    return wrapper
 
 
 class Database:
