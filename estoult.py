@@ -304,7 +304,7 @@ class Schema(metaclass=SchemaMetaclass):
         changeset = cls._validate(changeset)
 
         # A user specified validation function
-        validate_func = getattr(cls, "validate")
+        validate_func = getattr(cls, "validate", lambda: None)
 
         if validate_func is not None:
             changeset = validate_func(changeset)
