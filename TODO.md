@@ -7,3 +7,4 @@ From 2020-08-18:
 - [ ] Schema generator for apocryphan.
 - [ ] Write tests.
 - [ ] Audit SQL injections.
+- [ ] Support recursive cte's.
