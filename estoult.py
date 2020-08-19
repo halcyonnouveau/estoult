@@ -226,7 +226,6 @@ class Field:
 
 class SchemaMetaclass(type):
     def __new__(cls, clsname, bases, attrs):
-
         # Deepcopy inherited fields
         for base in bases:
             at = dir(base)
@@ -239,6 +238,7 @@ class SchemaMetaclass(type):
 
         c = super(SchemaMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
+        # Add schema to fields
         for key in dir(c):
             f = getattr(c, key)
 
@@ -365,8 +365,8 @@ class Schema(metaclass=SchemaMetaclass):
     @classmethod
     def delete(cls, row):
         # Deletes single row - look at `Query` for batch
-        sql = f"delete from {cls.table_name} where {str(cls.pk)} = {row[cls.pk.name]}"
-        return cls._database_.sql(sql, [])
+        sql = f"delete from {cls.table_name} where {str(cls.pk)} = %s"
+        return cls._database_.sql(sql, [row[cls.pk.name]])
 
 
 class QueryMetaclass(type):
