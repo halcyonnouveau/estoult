@@ -1,3 +1,4 @@
+from copy import deepcopy
 from collections import namedtuple
 from contextlib import contextmanager
 
@@ -225,6 +226,17 @@ class Field:
 
 class SchemaMetaclass(type):
     def __new__(cls, clsname, bases, attrs):
+
+        # Deepcopy inherited fields
+        for base in bases:
+            at = dir(base)
+
+            for a in at:
+                f = getattr(base, a)
+
+                if isinstance(f, Field):
+                    attrs[a] = deepcopy(f)
+
         c = super(SchemaMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
         for key in dir(c):
@@ -270,6 +282,9 @@ class Schema(metaclass=SchemaMetaclass):
         for field in cls.fields:
             value = row.get(field.name)
 
+            if value is None and field.name == cls.pk.name:
+                continue
+
             if value is not None:
                 value = field.type(value)
 
@@ -288,10 +303,10 @@ class Schema(metaclass=SchemaMetaclass):
         for field in cls.fields:
             value = row.get(field.name)
 
-            if value is None and updating is True:
+            if value is None:
                 continue
 
-            if field.null is False and value is None:
+            if field.null is False and value is None and updating is True:
                 raise FieldError(f"{str(field)} cannot be None")
 
             changeset[field.name] = value
@@ -304,7 +319,7 @@ class Schema(metaclass=SchemaMetaclass):
         changeset = cls._validate(changeset)
 
         # A user specified validation function
-        validate_func = getattr(cls, "validate", lambda: None)
+        validate_func = getattr(cls, "validate", lambda x: x)
 
         if validate_func is not None:
             changeset = validate_func(changeset)
@@ -314,12 +329,18 @@ class Schema(metaclass=SchemaMetaclass):
     @classmethod
     def insert(cls, obj):
         changeset = cls.casval(obj)
-        sql = f"insert into {cls.table_name} set "
-        params = []
 
-        for key, value in changeset.items():
-            params.append(value)
-            sql += f"{str(key)} = %s, "
+        params = list(changeset.values())
+        fields = ", ".join(changeset.keys())
+        placeholders = ", ".join(["%s"] * len(changeset))
+
+        sql = f"insert into {cls.table_name} (%s) values (%s)\n" % (
+            fields,
+            placeholders,
+        )
+
+        if psycopg2 is not None:
+            sql += f"returning {cls.pk.name}\n"
 
         return cls._database_.insert(_strip(sql), params)
 
@@ -335,7 +356,9 @@ class Schema(metaclass=SchemaMetaclass):
             params.append(value)
             sql += f"{str(key)} = %s, "
 
-        sql = f"{_strip(sql)} where {str(cls.pk)} = {changeset[cls.pk.name]}"
+        sql = f"{_strip(sql)} where {str(cls.pk)} = %s"
+
+        params.append(changeset[cls.pk.name])
 
         return cls._database_.sql(sql, params)
 
@@ -535,6 +558,7 @@ class Database:
 
         self.cursor = None
         self.conn = None
+        self.is_trans = False
         self._connect = self._make__connect_func(args, kwargs)
 
     def connect(self):
@@ -549,6 +573,7 @@ class Database:
     @contextmanager
     def atomic(self, commit=True):
         self.cursor = self.conn.cursor()
+        self.is_trans = True
 
         try:
             yield
@@ -561,12 +586,16 @@ class Database:
             else:
                 self.conn.rollback()
         finally:
+            self.is_false = True
             self.cursor = None
 
     @_replace_placeholders
     @_get_connection
     def sql(self, query, params):
         self.cursor.execute(query, params)
+
+        if self.is_trans is False:
+            self.conn.commit()
 
     @_get_connection
     def mogrify(self, query, params):
@@ -591,8 +620,11 @@ class Database:
 
     def insert(self, query, params):
         self.sql(query, params)
-        row_id = self.cursor.lastrowid
-        return row_id
+
+        if psycopg2 is not None:
+            return self.cursor.fetchone()[0]
+
+        return self.cursor.lastrowid
 
 
 class MySQLDatabase(Database):
