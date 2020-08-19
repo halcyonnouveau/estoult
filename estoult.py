@@ -320,9 +320,7 @@ class Schema(metaclass=SchemaMetaclass):
 
         # A user specified validation function
         validate_func = getattr(cls, "validate", lambda x: x)
-
-        if validate_func is not None:
-            changeset = validate_func(changeset)
+        changeset = validate_func(changeset)
 
         return changeset
 
