@@ -1,10 +1,14 @@
 # TODOs
 
-From 2020-08-18:
-
-- [ ] Better error handling and messages.
-- [ ] Documentation (code and docs).
-- [ ] Schema generator for apocryphan.
-- [ ] Write tests.
 - [ ] Audit SQL injections.
-- [ ] Support recursive cte's.
+- [ ] Better error handling and messages.
+- [ ] Support recursive CTE's.
+- [ ] Write tests.
+- [ ] Schema generator.
+- [ ] Yoyo-like migration tool.
+
+## In Progress
+
+- [ ] Documentation (code and docs).
+
+## Done
