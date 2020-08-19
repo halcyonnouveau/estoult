@@ -17,7 +17,7 @@ with io.open("README.md", "rt", encoding="utf8") as f:
 setup(
     name="estoult",
     version=__version__,
-    description="Simple SQL data mapper.",
+    description="Data mapper and query builder for SQL databases.",
     long_description=readme,
     long_description_content_type="text/markdown",
     author="Justin Duch",
