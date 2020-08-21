@@ -525,7 +525,7 @@ class Query(metaclass=QueryMetaclass):
                 .decode("utf-8"))}
         """.replace(
             "\n", " "
-        )._strip()
+        ).strip()
 
 
 def _replace_placeholders(func):
