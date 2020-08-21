@@ -276,6 +276,13 @@ class Schema(metaclass=SchemaMetaclass):
 
     @classmethod
     def _cast(cls, row):
+        # Allow you to use a Field as key
+        for key, value in list(row.items()):
+            if isinstance(key, Field):
+                row[key.name] = value
+            else:
+                row[key] = value
+
         changeset = {}
         updating = row.get(cls.pk.name) is not None
 
@@ -571,6 +578,7 @@ class Database:
     @contextmanager
     def atomic(self, commit=True):
         self.cursor = self.conn.cursor()
+        # estoult says trans rights
         self.is_trans = True
 
         try:
