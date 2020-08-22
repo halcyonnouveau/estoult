@@ -358,7 +358,7 @@ class Schema(metaclass=SchemaMetaclass):
         params = []
 
         for key, value in changeset.items():
-            params.append(value)
+            params.append(str(value))
             sql += f"{str(key)} = %s, "
 
         sql = f"{_strip(sql)} where {str(cls.pk)} = %s"
@@ -598,10 +598,14 @@ class Database:
     @_replace_placeholders
     @_get_connection
     def sql(self, query, params):
+        if self.is_trans is False:
+            self.cursor = self.conn.cursor()
+
         self.cursor.execute(query, params)
 
         if self.is_trans is False:
             self.conn.commit()
+            self.cursor = None
 
     @_get_connection
     def mogrify(self, query, params):
