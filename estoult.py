@@ -546,6 +546,9 @@ def _get_connection(func):
 
         f = func(self, *args, **kwargs)
 
+        if self.is_trans is False:
+            self.cursor = None
+
         if self.autoconnect is True:
             self.conn.close()
 
@@ -592,31 +595,40 @@ class Database:
             else:
                 self.conn.rollback()
         finally:
-            self.is_false = True
+            self.is_trans = False
             self.cursor = None
 
     @_replace_placeholders
-    @_get_connection
-    def sql(self, query, params):
-        if self.is_trans is False:
-            self.cursor = self.conn.cursor()
-
+    def _execute(self, query, params):
         self.cursor.execute(query, params)
 
         if self.is_trans is False:
             self.conn.commit()
-            self.cursor = None
+
+    @_get_connection
+    def sql(self, query, params):
+        return self._execute(query, params)
 
     @_get_connection
     def mogrify(self, query, params):
         with self.atomic(commit=False):
-            self.sql(query, params)
+            self._execute(query, params)
             return self.cursor._executed
 
+    @_get_connection
     def select(self, query, params):
-        self.sql(query, params)
+        self._execute(query, params)
         cols = [col[0] for col in self.cursor.description]
         return [dict(zip(cols, row)) for row in self.cursor.fetchall()]
+
+    @_get_connection
+    def insert(self, query, params):
+        self._execute(query, params)
+
+        if psycopg2 is not None:
+            return self.cursor.fetchone()[0]
+
+        return self.cursor.lastrowid
 
     def get(self, query, params):
         row = self.select(query, params)
@@ -627,14 +639,6 @@ class Database:
             return self.get(query, params)
         except IndexError:
             return None
-
-    def insert(self, query, params):
-        self.sql(query, params)
-
-        if psycopg2 is not None:
-            return self.cursor.fetchone()[0]
-
-        return self.cursor.lastrowid
 
 
 class MySQLDatabase(Database):
