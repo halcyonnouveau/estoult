@@ -206,6 +206,8 @@ class Field:
         self.type = type
         self.name = name
 
+        self.caster = kwargs.get("caster")
+
         self.null = kwargs.get("null")
         self.default = kwargs.get("default")
         self.primary_key = kwargs.get("primary_key") is True
@@ -293,7 +295,9 @@ class Schema(metaclass=SchemaMetaclass):
                 continue
 
             if value is not None:
-                value = field.type(value)
+                value = (
+                    field.type(value) if field.caster is None else field.caster(value)
+                )
 
             if field.default is not None and updating is False:
                 value = field.default
