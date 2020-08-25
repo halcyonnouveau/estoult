@@ -190,15 +190,15 @@ class op(metaclass=OperatorMetaclass):
 
     @classmethod
     def not_(cls, field):
-        return ConditionalClause("not {str(field)}", ())
+        return ConditionalClause(f"not {str(field)}", ())
 
     @classmethod
     def is_null(cls, field):
-        return ConditionalClause("{str(field)} is null", ())
+        return ConditionalClause(f"{str(field)} is null", ())
 
     @classmethod
     def not_null(cls, field):
-        return ConditionalClause("{str(field)} is not null", ())
+        return ConditionalClause(f"{str(field)} is not null", ())
 
 
 class Field:
