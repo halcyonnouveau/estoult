@@ -393,9 +393,6 @@ class QueryMetaclass(type):
     @staticmethod
     def make_join_fn(join_type):
         def join_fn(self, schema, on):
-            if schema not in self.schemas:
-                raise EstoultError("Schema not added to Query")
-
             q = f"{str(on[0])} = {str(on[1])}"
             self._query += f"{join_type} {schema.table_name} on {q}\n"
 
@@ -411,12 +408,8 @@ class QueryMetaclass(type):
 
 
 class Query(metaclass=QueryMetaclass):
-    def __init__(self, *schemas):
-        if len(schemas) == 0:
-            raise EstoultError("Schema(s) is/are required")
-
-        self.schemas = schemas
-        self.schema = schemas[0]
+    def __init__(self, schema):
+        self.schema = schema
 
         self._method = None
         self._query = ""
