@@ -189,6 +189,16 @@ class op(metaclass=OperatorMetaclass):
         raise ClauseError("`in` value can only be `subquery`, `list`, or `tuple`")
 
     @classmethod
+    def like(cls, value):
+        arg = f'%{value}%'
+        return OperatorClause("like %s", (arg))
+
+    @classmethod
+    def ilike(cls, value):
+        arg = f'%{value}%'
+        return OperatorClause("ilike %s", (arg))
+
+    @classmethod
     def not_(cls, field):
         return ConditionalClause(f"not {str(field)}", ())
 
@@ -514,6 +524,9 @@ class Query(metaclass=QueryMetaclass):
     def execute(self):
         func = getattr(self.schema._database_, self._method)
         return func(self._query, self._params)
+
+    def copy(self):
+        return deepcopy(self)
 
     def __str__(self):
         return f"""
