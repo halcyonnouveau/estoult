@@ -190,12 +190,12 @@ class op(metaclass=OperatorMetaclass):
 
     @classmethod
     def like(cls, value):
-        arg = f'%{value}%'
+        arg = f"%{value}%"
         return OperatorClause("like %s", (arg))
 
     @classmethod
     def ilike(cls, value):
-        arg = f'%{value}%'
+        arg = f"%{value}%"
         return OperatorClause("ilike %s", (arg))
 
     @classmethod
@@ -224,7 +224,7 @@ class Field:
 
     @property
     def full_name(self):
-        return f"{self.schema.table_name}.{self.name}"
+        return f"{self.schema.__tablename__}.{self.name}"
 
     def __str__(self):
         return self.full_name
@@ -284,7 +284,7 @@ class SchemaMetaclass(type):
 class Schema(metaclass=SchemaMetaclass):
 
     _database_ = None
-    table_name = None
+    __tablename__ = None
 
     @classmethod
     def _cast(cls, row):
@@ -353,7 +353,7 @@ class Schema(metaclass=SchemaMetaclass):
         fields = ", ".join(changeset.keys())
         placeholders = ", ".join(["%s"] * len(changeset))
 
-        sql = f"insert into {cls.table_name} (%s) values (%s)\n" % (
+        sql = f"insert into {cls.__tablename__} (%s) values (%s)\n" % (
             fields,
             placeholders,
         )
@@ -368,7 +368,7 @@ class Schema(metaclass=SchemaMetaclass):
         # This updates a single row only, if you want to update several
         # use `update` in `Query`
         changeset = cls.casval({**old, **new})
-        sql = f"update {cls.table_name} set "
+        sql = f"update {cls.__tablename__} set "
         params = []
 
         for key, value in changeset.items():
@@ -384,7 +384,7 @@ class Schema(metaclass=SchemaMetaclass):
     @classmethod
     def delete(cls, row):
         # Deletes single row - look at `Query` for batch
-        sql = f"delete from {cls.table_name} where {str(cls.pk)} = %s"
+        sql = f"delete from {cls.__tablename__} where {str(cls.pk)} = %s"
         return cls._database_.sql(sql, [row[cls.pk.name]])
 
 
@@ -404,7 +404,7 @@ class QueryMetaclass(type):
     def make_join_fn(join_type):
         def join_fn(self, schema, on):
             q = f"{str(on[0])} = {str(on[1])}"
-            self._query += f"{join_type} {schema.table_name} on {q}\n"
+            self._query += f"{join_type} {schema.__tablename__} on {q}\n"
 
             return self
 
@@ -437,13 +437,13 @@ class Query(metaclass=QueryMetaclass):
         else:
             args = ", ".join([str(a) for a in args])
 
-        self._query = f"select {args} from {self.schema.table_name}\n"
+        self._query = f"select {args} from {self.schema.__tablename__}\n"
 
         return self
 
     def update(self, changeset):
         self._method = "sql"
-        self._query = f"update {self.schema.table_name} set "
+        self._query = f"update {self.schema.__tablename__} set "
 
         changeset = self.schema.casval(changeset)
 
@@ -457,7 +457,7 @@ class Query(metaclass=QueryMetaclass):
 
     def delete(self, row):
         self._method = "sql"
-        self._query = f"delete from {self.schema.table_name}\n"
+        self._query = f"delete from {self.schema.__tablename__}\n"
         return self
 
     def get(self, *args):

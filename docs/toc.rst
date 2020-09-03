@@ -6,3 +6,4 @@ Estoult
 
    index
    getting_started
+   how_tos

@@ -42,14 +42,14 @@ The schema is a representation of data from our database. We create schemas by i
 .. code-block:: python
 
    class Author(db.Schema):
-      table_name = "authors"
+      __tablename__ = "authors"
 
       id = Field(int, "id")
       first_name = Field(str, "first_name")
       last_name = Field(str, "last_name")
 
    class Book(db.Schema):
-      table_name = "books"
+      __tablename__ = "books"
 
       id = Field(int, "id")
       name = Field(str, "name")
