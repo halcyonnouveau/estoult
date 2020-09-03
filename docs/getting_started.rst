@@ -57,7 +57,7 @@ The schema is a representation of data from our database. We create schemas by i
 
 This defines the schema from the database that this schema maps to. In this case, we're saying that the ``Author`` schema maps to the ``authors`` table in the database, and the ``id``, ``first_name`` and ``last_name`` are fields in that table.
 
-**Note:** It is good practice to have your database table be named plural but schema as singular.
+**Note:** It is good practice to have your database table be named as a plural noun but schema as a singular noun.
 
 Inserting and updating data
 ---------------------------
