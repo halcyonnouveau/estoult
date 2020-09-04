@@ -106,6 +106,7 @@ class FunctionMetaclass(type):
         "avg",
         "ceil",
         "distinct",
+        "concat",
     ]
 
     @staticmethod
@@ -126,6 +127,10 @@ class fn(metaclass=FunctionMetaclass):
     @classmethod
     def alias(cls, field, value):
         return f"{field} as {value}"
+
+    @classmethod
+    def wild(cls, schema):
+        return f"{schema.__tablename__}.*"
 
 
 class OperatorMetaclass(type):
