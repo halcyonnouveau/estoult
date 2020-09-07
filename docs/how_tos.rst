@@ -30,7 +30,7 @@ You can ``print`` any unexecuted ``Query`` to display the generated SQL.
 
 .. code-block:: python
 
-   >>> print(Query(Animal).select().where({Animal.name: "Red Panda"}))
+   >>> print(Query(Animal).select().where(Animal.name == "Red Panda"))
    select * from animals where animals.name = "Red Panda"
 
 Validation
@@ -73,8 +73,8 @@ Operator Meaning
 
    >>> from estoult import Query, op
    >>> query = Query(Meal).select()
-   >>> query.where({Meal.name != "Pizza"})
-   >>> query.where({Meal.calories > 400})
+   >>> query.where(Meal.name != "Pizza")
+   >>> query.where(Meal.calories > 400)
 
 Other operators are avaliable as methods:
 
@@ -82,6 +82,6 @@ Other operators are avaliable as methods:
 
    >>> query = Query(Car).select()
    # name = "Ferrari" OR engine = "GP2"
-   >>> query.where(op.or_({Car.name: "Ferrari"}, {Meal.name: "GP2"}))
+   >>> query.where(op.or_(Car.name == "Ferrari", Meal.name == "GP2"))
    # name like '%Renault%'
-   >>> query.where({Meal.cook: op.like("Renault")})
+   >>> query.where(op.like(Meal.cook, op.like("Renault")))

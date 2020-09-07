@@ -43,58 +43,7 @@ class FieldError(EstoultError):
     pass
 
 
-Subquery = namedtuple("Subquery", ["query", "params"])
 Clause = namedtuple("Clause", ["clause", "params"])
-ConditionalClause = namedtuple("ConditionalClause", ["conditional", "params"])
-OperatorClause = namedtuple("OperatorClause", ["operator", "operand"])
-
-
-class InOperatorClause(OperatorClause):
-    pass
-
-
-def _parse_clause(clause):
-    if isinstance(clause, set):
-        clause = clause.pop()
-
-    if isinstance(clause, ConditionalClause):
-        return Clause(clause.conditional + " ", clause.params)
-
-    if isinstance(clause, dict):
-        # An unparsed clause is a dict with one key/value. E.g:
-        # {User.email: "email@mail.com"}
-        # In a `where` function you would add multiple clauses like this:
-        # > .where({User.name: "beanpuppy"}, {User.archive: 0})
-        # This makes the following SQL:
-        # `where User.name = "beanpuppy" and User.archive = 0`
-        if len(clause.keys()) > 1:
-            raise ClauseError("Clause can only have one key/value pair")
-
-        key, value = list(clause.items())[0]
-
-        if isinstance(value, OperatorClause):
-            # This is normally a clause from the operator class:
-            # > {Person.id: op.gt(1)}
-            string = f"{str(key)} {value.operator}"
-
-            if isinstance(value.operand, Subquery):
-                string += " " + value.operand.query
-                params = value.operand.params
-            else:
-                params = (
-                    value.operand
-                    if isinstance(value, InOperatorClause)
-                    else (value.operand,)
-                )
-        else:
-            # The default way clauses are:
-            # > {Person.id: 1}
-            string = f"{str(key)} = %s"
-            params = (value,)
-
-        return Clause(string + " ", params)
-
-    raise ClauseError(f"Clause structure is incorrect: {str(clause)}")
 
 
 def _strip(string):
@@ -149,8 +98,8 @@ class OperatorMetaclass(type):
 
     @staticmethod
     def make_fn(operator):
-        def op_fn(value):
-            return OperatorClause(f"{operator} %s", value)
+        def op_fn(field, value):
+            return Clause(f"%s {operator} %s", (field, value))
 
         return op_fn
 
@@ -163,73 +112,55 @@ class OperatorMetaclass(type):
 
 class op(metaclass=OperatorMetaclass):
     @staticmethod
-    def _clause_args(func):
-        def wrapper(cls, *args):
-            args = [_parse_clause(a) for a in args]
-            return func(cls, *args)
-
-        return wrapper
-
-    @classmethod
-    @_clause_args.__func__
-    def or_(cls, cond_1, cond_2):
-        return ConditionalClause(
+    def or_(cond_1, cond_2):
+        return Clause(
             f"({_strip(cond_1[0])} or {_strip(cond_2[0])})", (*cond_1[1], *cond_2[1]),
         )
 
-    @classmethod
-    @_clause_args.__func__
-    def and_(cls, cond_1, cond_2):
-        return ConditionalClause(
+    @staticmethod
+    def and_(cond_1, cond_2):
+        return Clause(
             f"({_strip(cond_1[0])} and {_strip(cond_2[0])})", (*cond_1[1], *cond_2[1]),
         )
 
-    @classmethod
-    def in_(cls, value):
-        # `in` gets it's own special clause handling
-        if isinstance(value, Subquery):
-            return InOperatorClause("in", value)
+    @staticmethod
+    def in_(field, value):
+        if isinstance(value, Query):
+            return Clause(f"%s in ({str(value)})", (field))
 
         if isinstance(value, list) or isinstance(value, tuple):
             placeholders = ", ".join(["%s"] * len(value))
-            return InOperatorClause(f"in ({placeholders})", value)
+            return Clause(f"%s in ({placeholders})", (field, value))
 
         raise ClauseError("`in` value can only be `subquery`, `list`, or `tuple`")
 
-    @classmethod
-    def like(cls, value):
+    @staticmethod
+    def like(field, value):
         arg = f"%{value}%"
-        return OperatorClause("like %s", (arg))
+        return Clause("%s like %s", (field, arg))
 
-    @classmethod
-    def ilike(cls, value):
+    @staticmethod
+    def ilike(field, value):
         arg = f"%{value}%"
-        return OperatorClause("ilike %s", (arg))
+        return Clause("%s ilike %s", (field, arg))
 
-    @classmethod
-    def not_(cls, field):
-        return ConditionalClause(f"not {str(field)}", ())
+    @staticmethod
+    def not_(field):
+        return Clause("not %s", (field))
 
-    @classmethod
-    def is_null(cls, field):
-        return ConditionalClause(f"{str(field)} is null", ())
+    @staticmethod
+    def is_null(field):
+        return Clause("%s is null", (field))
 
-    @classmethod
-    def not_null(cls, field):
-        return ConditionalClause(f"{str(field)} is not null", ())
+    @staticmethod
+    def not_null(field):
+        return Clause("%s is not null", (field))
 
 
 class FieldMetaclass(type):
-    @staticmethod
-    def make_fn(operator):
-        def op_fn(cls, value):
-            return ConditionalClause(f"{cls.full_name} {operator} %s", (value,))
-
-        return op_fn
-
     def __new__(cls, clsname, bases, attrs):
         for name, operator in OperatorMetaclass.sql_ops.items():
-            attrs[f"__{name}__"] = FieldMetaclass.make_fn(operator)
+            attrs[f"__{name}__"] = OperatorMetaclass.make_fn(operator)
 
         return super(FieldMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
@@ -395,8 +326,8 @@ class Schema(metaclass=SchemaMetaclass):
         params = []
 
         for key, value in changeset.items():
-            params.append(str(value))
-            sql += f"{str(key)} = %s, "
+            sql += "%s = %s, "
+            params.extend((str(key), str(value)))
 
         sql = f"{_strip(sql)} where {str(cls.pk)} = %s"
 
@@ -428,7 +359,6 @@ class QueryMetaclass(type):
         def join_fn(self, schema, on):
             q = f"{str(on[0])} = {str(on[1])}"
             self._query += f"{join_type} {schema.__tablename__} on {q}\n"
-
             return self
 
         return join_fn
@@ -447,10 +377,6 @@ class Query(metaclass=QueryMetaclass):
         self._method = None
         self._query = ""
         self._params = []
-
-    @property
-    def subquery(self):
-        return Subquery(f"({self._query})", self._params)
 
     def select(self, *args):
         self._method = "select"
@@ -471,8 +397,8 @@ class Query(metaclass=QueryMetaclass):
         changeset = self.schema.casval(changeset)
 
         for key, value in changeset.items():
-            self._query += f"{str(key)} = %s, "
-            self._params.append(str(value))
+            self._query += "%s = %s, "
+            self._params.extend((str(key), str(value)))
 
         self._query = f"{_strip(self._query)}\n"
 
@@ -501,7 +427,7 @@ class Query(metaclass=QueryMetaclass):
         self._query += "where "
 
         for clause in clauses:
-            string, params = _parse_clause(clause)
+            string, params = clause
 
             self._query += f"{string} and "
             self._params.extend(params)

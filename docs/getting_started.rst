@@ -93,13 +93,13 @@ Fetching a single record
    my_book = (
       Query(Book)
       .get()
-      .where({Book.id: 1})
+      .where(Book.id == 1)
       .execute()
    )
 
    print(my_book["id"])
 
-``Query`` builds your SQL query using a wide range of functions. We are using ``get`` to only retrieve one row and ``where`` to specify which. ``where`` accepts a list of dictionaries (or ``op``, but that is for later) to send as arguments, we are using ``{Book.id: 1}`` which translates to ``Book.id = 1`` in SQL. When the query is built we call ``execute`` to run it.
+``Query`` builds your SQL query using a wide range of functions. We are using ``get`` to only retrieve one row and ``where`` to specify which. ``where`` accepts a number of clauses (or ``op``, but that is for later) to send as arguments. When the query is built we call ``execute`` to run it.
 
 Fetching multiple records
 -------------------------
@@ -129,7 +129,7 @@ Updating multiple records
 
    (Query(Book)
       .update(update_books)
-      .where({Book.id: op.gt(0)})
+      .where(Book.id > 0)
       .execute())
 
 This is updating all books with an ``id`` greater than ``0``.
@@ -149,7 +149,7 @@ Similar to updating, we can use ``Schema`` for a single row or ``Query`` for mul
    # Multiple books
    (Query(Book)
       .delete()
-      .where({Book.id >= my_book["id"]})
+      .where(Book.id >= my_book["id"])
       .execute())
 
 The ``Query`` is deleting all books which have an ``id`` greater or equal to ``my_book["id"]``.

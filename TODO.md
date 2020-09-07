@@ -1,6 +1,5 @@
 # TODOs
 
-- [ ] Audit SQL injections.
 - [ ] Better error handling and messages.
 - [ ] Support recursive CTE's.
 - [ ] Write tests.
@@ -12,3 +11,5 @@
 - [ ] Documentation (code and docs).
 
 ## Done
+
+- [x] Audit SQL injections.
