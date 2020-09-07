@@ -54,6 +54,9 @@ class InOperatorClause(OperatorClause):
 
 
 def _parse_clause(clause):
+    if isinstance(clause, set):
+        clause = clause.pop()
+
     if isinstance(clause, ConditionalClause):
         return Clause(clause.conditional + " ", clause.params)
 
@@ -220,7 +223,7 @@ class FieldMetaclass(type):
     @staticmethod
     def make_fn(operator):
         def op_fn(cls, value):
-            return OperatorClause(f"{cls.full_name} {operator} %s", value)
+            return ConditionalClause(f"{cls.full_name} {operator} %s", (value,))
 
         return op_fn
 
