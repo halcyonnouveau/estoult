@@ -22,12 +22,14 @@ __version__ = "0.2.1"
 __all__ = [
     "ClauseError",
     "Database",
+    "DatabaseError",
     "EstoultError",
     "Field",
     "FieldError",
     "fn",
     "op",
     "Query",
+    "QueryError",
 ]
 
 
@@ -40,6 +42,14 @@ class ClauseError(EstoultError):
 
 
 class FieldError(EstoultError):
+    pass
+
+
+class QueryError(EstoultError):
+    pass
+
+
+class DatabaseError(EstoultError):
     pass
 
 
@@ -429,6 +439,7 @@ class Query(metaclass=QueryMetaclass):
         for clause in clauses:
             string, params = clause
 
+            # We can always add an `and` to the end cus it get stripped off ;)
             self._query += f"{string} and "
             self._params.extend(params)
 
@@ -444,7 +455,7 @@ class Query(metaclass=QueryMetaclass):
             # `offset` works in mysql and postgres
             self._query += "limit %s offset %s\n"
         else:
-            raise EstoultError("`limit` has too many arguments")
+            raise QueryError("`limit` has too many arguments")
 
         self._params.extend(args)
 
@@ -458,7 +469,7 @@ class Query(metaclass=QueryMetaclass):
             if isinstance(a, dict):
                 for k, v in a.items():
                     if v != "asc" and v != "desc":
-                        raise EstoultError("Value must be 'asc' or 'desc'")
+                        raise QueryError("Value must be 'asc' or 'desc'")
 
                     params.extend([str(k), v])
             else:
