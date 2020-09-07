@@ -572,7 +572,7 @@ def _replace_placeholders(func):
 def _get_connection(func):
     def wrapper(self, *args, **kwargs):
         if self.autoconnect is True:
-            self._connect()
+            self.connect()
 
         if self.cursor is None:
             self.cursor = self.conn.cursor()
