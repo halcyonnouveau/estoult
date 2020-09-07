@@ -149,7 +149,7 @@ Similar to updating, we can use ``Schema`` for a single row or ``Query`` for mul
    # Multiple books
    (Query(Book)
       .delete()
-      .where({Book.id: op.gt_eq(my_book["id"])})
+      .where({Book.id >= my_book["id"]})
       .execute())
 
 The ``Query`` is deleting all books which have an ``id`` greater or equal to ``my_book["id"]``.

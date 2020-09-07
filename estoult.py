@@ -133,10 +133,10 @@ class OperatorMetaclass(type):
     sql_ops = {
         "eq": "=",
         "lt": "<",
-        "lt_eq": "<=",
+        "le": "<=",
         "gt": ">",
-        "gt_eq": ">=",
-        "n_eq": "<>",
+        "ge": ">=",
+        "ne": "<>",
     }
 
     @staticmethod
@@ -211,7 +211,22 @@ class op(metaclass=OperatorMetaclass):
         return ConditionalClause(f"{str(field)} is not null", ())
 
 
-class Field:
+class FieldMetaclass(type):
+    @staticmethod
+    def make_fn(operator):
+        def op_fn(cls, value):
+            return OperatorClause(f"{cls.full_name} {operator} %s", value)
+
+        return op_fn
+
+    def __new__(cls, clsname, bases, attrs):
+        for name, operator in OperatorMetaclass.sql_ops.items():
+            attrs[f"__{name}__"] = FieldMetaclass.make_fn(operator)
+
+        return super(FieldMetaclass, cls).__new__(cls, clsname, bases, attrs)
+
+
+class Field(metaclass=FieldMetaclass):
     def __init__(self, type, name, **kwargs):
         self.type = type
         self.name = name

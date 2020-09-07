@@ -56,13 +56,34 @@ Estoult by default only validates the type of a field. You can easily extend thi
 Query operators
 ---------------
 
-Import the ``op`` class to use operators.
+Common query operators can be used as overloaded python operators in every ``Field``. These are:
+
+======== =======
+Operator Meaning
+-------- -------
+``==``   x equals y
+``<``    x is less than y
+``<=``   x is less than or equal to y
+``>``    x is greater than y
+``>=``   x is greater than or equal to y
+``!=``   x is not equal to y
+======== =======
 
 .. code-block:: python
 
    >>> from estoult import Query, op
    >>> query = Query(Meal).select()
-   # name = "Pizza" OR name = "Fish"
-   >>> query.where(op.or_({Meal.name: "Pizza"}, {Meal.name: "Fish"}))
+   # meal != "Pizza"
+   >>> query.where({Meal.name != "Pizza"})
    # calories < 400
-   >>> query.where({Meal.calories: op.lt(400)})
+   >>> query.where({Meal.calories > 400})
+
+Other operators are avaliable as methods:
+
+.. code-block:: python
+
+   >>> query = Query(Car).select()
+   # name = "Ferrari" OR engine = "GP2"
+   >>> query.where(op.or_({Car.name: "Ferrari"}, {Meal.name: "GP2"}))
+   # name like '%alp%'
+   >>> query.where({Meal.cook: op.like("alp")})
