@@ -73,9 +73,7 @@ Operator Meaning
 
    >>> from estoult import Query, op
    >>> query = Query(Meal).select()
-   # meal != "Pizza"
    >>> query.where({Meal.name != "Pizza"})
-   # calories < 400
    >>> query.where({Meal.calories > 400})
 
 Other operators are avaliable as methods:
@@ -85,5 +83,5 @@ Other operators are avaliable as methods:
    >>> query = Query(Car).select()
    # name = "Ferrari" OR engine = "GP2"
    >>> query.where(op.or_({Car.name: "Ferrari"}, {Meal.name: "GP2"}))
-   # name like '%alp%'
-   >>> query.where({Meal.cook: op.like("alp")})
+   # name like '%Renault%'
+   >>> query.where({Meal.cook: op.like("Renault")})
