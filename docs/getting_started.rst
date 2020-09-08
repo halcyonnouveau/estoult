@@ -12,7 +12,7 @@ To install the latest version, hosted on PyPI:
 
 .. code-block:: text
 
-   pip install estoult
+    pip install estoult
 
 If you are using SQLite you don't need to install anything else. Otherwise you need to have the correct database driver installed:
 
@@ -26,13 +26,13 @@ Estoult has different database classes for each database driver: ``SQLiteDatabas
 
 .. code-block:: python
 
-   from estoult import *
+    from estoult import *
 
-   db = PostgreSQLDatabase(
-      database="my_db",
-      user="postgres",
-      password="postgres"
-   )
+    db = PostgreSQLDatabase(
+        database="my_db",
+        user="postgres",
+        password="postgres"
+    )
 
 Creating schemas
 ----------------
@@ -41,19 +41,19 @@ The schema is a representation of data from our database. We create schemas by i
 
 .. code-block:: python
 
-   class Author(db.Schema):
-      __tablename__ = "authors"
+    class Author(db.Schema):
+        __tablename__ = "authors"
 
-      id = Field(int, "id")
-      first_name = Field(str, "first_name")
-      last_name = Field(str, "last_name")
+        id = Field(int, "id")
+        first_name = Field(str, "first_name")
+        last_name = Field(str, "last_name")
 
-   class Book(db.Schema):
-      __tablename__ = "books"
+    class Book(db.Schema):
+        __tablename__ = "books"
 
-      id = Field(int, "id")
-      name = Field(str, "name")
-      author_id = Field(int, "author_id")
+        id = Field(int, "id")
+        name = Field(str, "name")
+        author_id = Field(int, "author_id")
 
 This defines the schema from the database that this schema maps to. In this case, we're saying that the ``Author`` schema maps to the ``authors`` table in the database, and the ``id``, ``first_name`` and ``last_name`` are fields in that table.
 
@@ -66,20 +66,20 @@ We can insert new rows into our tables like this:
 
 .. code-block:: python
 
-   new_author = {"first_name": "Kurt", "last_name": "Vonnegut"}
+    new_author = {"first_name": "Kurt", "last_name": "Vonnegut"}
 
-   # `insert` returns the id of the new row
-   new_author["id"] = Author.insert(new_author)
+    # `insert` returns the id of the new row
+    new_author["id"] = Author.insert(new_author)
 
-   new_book = {"name": "Player Piano", "author_id": new_author["id"]}
+    new_book = {"name": "Player Piano", "author_id": new_author["id"]}
 
-   new_book["id"] = Book.insert(new_book)
+    new_book["id"] = Book.insert(new_book)
 
 To update the row, we use ``update``:
 
 .. code-block:: python
 
-   Book.update(new_book, {"name": "Slaughterhouse-Five"})
+    Book.update(new_book, {"name": "Slaughterhouse-Five"})
 
 Here we updated the row ``new_book`` with a new ``name``.
 
@@ -90,14 +90,14 @@ Fetching a single record
 
 .. code-block:: python
 
-   my_book = (
-      Query(Book)
-      .get()
-      .where(Book.id == 1)
-      .execute()
-   )
+    my_book = (
+        Query(Book)
+        .get()
+        .where(Book.id == 1)
+        .execute()
+    )
 
-   print(my_book["id"])
+    print(my_book["id"])
 
 ``Query`` builds your SQL query using a wide range of functions. We are using ``get`` to only retrieve one row and ``where`` to specify which. ``where`` accepts a number of clauses (or ``op``, but that is for later) to send as arguments. When the query is built we call ``execute`` to run it.
 
@@ -109,10 +109,10 @@ Instead of using ``get``, use ``select`` to get multiple records.
 .. code-block:: python
 
    my_books = (
-      Query(Book)
-      .select()
-      .where()
-      .execute()
+        Query(Book)
+        .select()
+        .where()
+        .execute()
    )
 
 This will get all books.
@@ -125,12 +125,12 @@ Updating multiple records
 
 .. code-block:: python
 
-   update_books = {"name": "Casseur de Logistille"}
+    update_books = {"name": "Casseur de Logistille"}
 
-   (Query(Book)
-      .update(update_books)
-      .where(Book.id > 0)
-      .execute())
+    (Query(Book)
+        .update(update_books)
+        .where(Book.id > 0)
+        .execute())
 
 This is updating all books with an ``id`` greater than ``0``.
 
@@ -143,13 +143,13 @@ Similar to updating, we can use ``Schema`` for a single row or ``Query`` for mul
 
 .. code-block:: python
 
-   # Single book
-   Book.delete(my_book)
+    # Single book
+    Book.delete(my_book)
 
-   # Multiple books
-   (Query(Book)
-      .delete()
-      .where(Book.id >= my_book["id"])
-      .execute())
+    # Multiple books
+    (Query(Book)
+        .delete()
+        .where(Book.id >= my_book["id"])
+        .execute())
 
 The ``Query`` is deleting all books which have an ``id`` greater or equal to ``my_book["id"]``.

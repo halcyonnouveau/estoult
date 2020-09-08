@@ -8,10 +8,10 @@ Use a ``join`` function in your ``Query``. Example:
 
 .. code-block:: python
 
-   (Query(Contact)
-      .select(Contact.id, Person.name)
-      .left_join(Person, on=[Person.contact_id, Contact.id])
-      .execute())
+    (Query(Contact)
+        .select(Contact.id, Person.name)
+        .left_join(Person, on=[Person.contact_id, Contact.id])
+        .execute())
 
 Currently, the supported joins are:
 
@@ -30,8 +30,8 @@ You can ``print`` any unexecuted ``Query`` to display the generated SQL.
 
 .. code-block:: python
 
-   >>> print(Query(Animal).select().where(Animal.name == "Red Panda"))
-   select * from animals where animals.name = "Red Panda"
+    >>> print(Query(Animal).select().where(Animal.name == "Red Panda"))
+    select * from animals where animals.name = "Red Panda"
 
 Validation
 ----------
@@ -40,18 +40,18 @@ Estoult by default only validates the type of a field. You can easily extend thi
 
 .. code-block:: python
 
-   class Person(db.Schema):
-      __tablename__ = "people"
+    class Person(db.Schema):
+        __tablename__ = "people"
 
-      id = Field(str, "id")
-      name = Field(str, "name")
-      dob = Field(str, "dob")
-      country = Field(str, "country")
+        id = Field(str, "id")
+        name = Field(str, "name")
+        dob = Field(str, "dob")
+        country = Field(str, "country")
 
-      @classmethod
-      def validate(cls, row):
-         if row["country"] == "France":
-            raise Exception("No French allowed")
+        @classmethod
+        def validate(cls, row):
+            if row["country"] == "France":
+                raise Exception("No French allowed")
 
 Query operators
 ---------------
@@ -71,20 +71,20 @@ Operator Meaning
 
 .. code-block:: python
 
-   >>> from estoult import Query, op
-   >>> query = Query(Meal).select()
-   >>> query.where(Meal.name != "Pizza")
-   >>> query.where(Meal.calories > 400)
+    >>> from estoult import Query, op
+    >>> query = Query(Meal).select()
+    >>> query.where(Meal.name != "Pizza")
+    >>> query.where(Meal.calories > 400)
 
 Other operators are avaliable as methods:
 
 .. code-block:: python
 
-   >>> query = Query(Car).select()
-   # name = "Ferrari" OR engine = "GP2"
-   >>> query.where(op.or_(Car.name == "Ferrari", Meal.name == "GP2"))
-   # name like '%Renault%'
-   >>> query.where(op.like(Meal.cook, op.like("Renault")))
+    >>> query = Query(Car).select()
+    # name = "Ferrari" OR engine = "GP2"
+    >>> query.where(op.or_(Car.name == "Ferrari", Meal.name == "GP2"))
+    # name like '%Renault%'
+    >>> query.where(op.like(Meal.cook, op.like("Renault")))
 
 Function operators
 ------------------
