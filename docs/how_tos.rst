@@ -15,13 +15,13 @@ Use a ``join`` function in your ``Query``. Example:
 
 Currently, the supported joins are:
 
-- inner join
-- left join
-- left outer join
-- right join
-- right outer join
-- full join
-- full outer join
+- ``inner_join``
+- ``left_join``
+- ``left_outer_join``
+- ``right_join``
+- ``right_outer_join``
+- ``full_join``
+- ``full_outer_join``
 
 Display generated query
 -----------------------
@@ -85,3 +85,26 @@ Other operators are avaliable as methods:
    >>> query.where(op.or_(Car.name == "Ferrari", Meal.name == "GP2"))
    # name like '%Renault%'
    >>> query.where(op.like(Meal.cook, op.like("Renault")))
+
+Function operators
+------------------
+
+Function operators are imported with the ``fn`` module.
+
+.. list-table::
+   :widths: 20 80
+
+   * - count
+     - ``.select(fn.count(Person.id))``
+   * - sum
+     - ``.select(fn.sum(Person.weight))``
+   * - avg
+     - ``.select(fn.avg(Person.age))``
+   * - ceil
+     - ``.where(fn.ceil(Person.height) == 180)``
+   * - distinct
+     - ``.select(fn.distinct(Person.email))``
+   * - concat
+     - ``.where(fn.concat(Person.first_name, "' '", Person.last_name) == "Carlos Sainz")``
+   * - alias
+     - ``.select(fn.alias(fn.sum(Person.weight), "weight"))``
