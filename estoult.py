@@ -367,17 +367,25 @@ class Schema(metaclass=SchemaMetaclass):
             sql += f"{key} = %s, "
             params.append(str(value))
 
-        sql = f"{_strip(sql)} where {str(cls.pk)} = %s"
+        sql += f"{_strip(sql)} where "
 
-        params.append(changeset[cls.pk.name])
+        for key, value in old.items():
+            sql += f"{key} = %s and"
+            params.append(str(value))
 
-        return cls._database_.sql(sql, params)
+        return cls._database_.sql(_strip(sql), params)
 
     @classmethod
     def delete(cls, row):
         # Deletes single row - look at `Query` for batch
-        sql = f"delete from {cls.__tablename__} where {str(cls.pk)} = %s"
-        return cls._database_.sql(sql, [row[cls.pk.name]])
+        sql = f"delete from {cls.__tablename__} where "
+        params = []
+
+        for key, value in row.items():
+            sql += f"{key} = %s and"
+            params.append(str(value))
+
+        return cls._database_.sql(_strip(sql), params)
 
 
 class QueryMetaclass(type):

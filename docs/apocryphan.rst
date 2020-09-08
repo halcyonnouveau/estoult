@@ -28,7 +28,9 @@ In a single-threaded application, only one connection will be created. It will b
     )
 
 
-**Note:** ``autoconnect`` is disabled so your application needs to ensure that connections are opened and closed when you are finished with them, so they can be returned to the pool. With a Flask server, it could look like this:
+.. warning::
+
+   ``autoconnect`` is disabled so your application needs to ensure that connections are opened and closed when you are finished with them, so they can be returned to the pool. With a Flask server, it could look like this:
 
 .. code-block:: python
 

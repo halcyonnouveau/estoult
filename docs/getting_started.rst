@@ -57,7 +57,9 @@ The schema is a representation of data from our database. We create schemas by i
 
 This defines the schema from the database that this schema maps to. In this case, we're saying that the ``Author`` schema maps to the ``authors`` table in the database, and the ``id``, ``first_name`` and ``last_name`` are fields in that table.
 
-**Note:** It is good practice to have your database table be named as a plural noun but schema as a singular noun.
+.. note::
+
+   It is good practice to have your database table be named as a plural noun but schema as a singular noun.
 
 Inserting and updating data
 ---------------------------
@@ -86,7 +88,7 @@ Here we updated the row ``new_book`` with a new ``name``.
 Fetching a single record
 ------------------------
 
-``Schema`` is for inserting/updating a single row. When retrieving data or working with multiple rows we use the ``Query`` class.
+``Schema`` is for inserting/updating rows. When retrieving data or working with multiple rows we use the ``Query`` class.
 
 .. code-block:: python
 
@@ -121,7 +123,16 @@ This will get all books.
 Updating multiple records
 -------------------------
 
-``Query`` is used to update mutiple records as well.
+You can do basic updates of records with ``Schema``.
+
+    book_to_update = {"id": "123", "name": "Book"}
+    update = {"name": "New Book"}
+
+    Book.update(book_to_update, update)
+
+This updates books where ``id`` is ``123`` and ``name`` is ``Book``. You actually only need to pass in a unique field if you want to update a single book, but passing other fields aswell is fine.
+
+``Query`` can be used to make more complicated updates.
 
 .. code-block:: python
 
@@ -139,7 +150,7 @@ Deleting records
 
 Now that we've covered inserting, reading and updaing. The last thing is how to delete records in Estoult.
 
-Similar to updating, we can use ``Schema`` for a single row or ``Query`` for multiple rows. Let's delete ``my_book`` which we retrieved earlier.
+Similar to updating, we can use ``Schema`` or ``Query``. Let's delete ``my_book`` which we retrieved earlier.
 
 .. code-block:: python
 
