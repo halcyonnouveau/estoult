@@ -125,6 +125,8 @@ Updating multiple records
 
 You can do basic updates of records with ``Schema``.
 
+.. code-block:: python
+
     book_to_update = {"id": "123", "name": "Book"}
     update = {"name": "New Book"}
 
