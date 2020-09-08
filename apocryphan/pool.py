@@ -1,6 +1,23 @@
+r"""
+Lightweight connection pooling. This is heavily recommended for multi-threaded
+applications (e.g webservers).
+
+In a multi-threaded application, up to `max_connections` will be opened. Each
+thread (or, if using gevent, greenlet) will have it's own connection.
+
+In a single-threaded application, only one connection will be created. It will
+be continually recycled until either it exceeds the stale timeout or is closed
+explicitly (using `.manual_close()`).
+
+Note: `autoconnect` is disabled so your application needs to ensure that
+connections are opened and closed when you are finished with them, so they can be
+returned to the pool.
+"""
+
 import heapq
 import random
 import time
+import threading
 
 from collections import namedtuple
 
@@ -27,13 +44,18 @@ class MaxConnectionsExceeded(ValueError):
 
 
 PoolConnection = namedtuple(
-    "PoolConnection", ("timestamp", "connection", "checked_out")
+    "PoolConnection", ("timestamp", "connection", "checked_out", "cursor")
 )
 
 
 class PooledDatabase(object):
     def __init__(
-        self, max_connections=20, stale_timeout=None, timeout=None, *args, **kwargs
+        self,
+        max_connections=20,
+        stale_timeout=None,
+        timeout=None,
+        *args,
+        **kwargs
     ):
         self._max_connections = make_int(max_connections)
         self._stale_timeout = make_int(stale_timeout)
@@ -50,13 +72,16 @@ class PooledDatabase(object):
         # allow us to create weak references to connection objects.
         self._in_use = {}
 
-        # Use the memory address of the connection as the key in the event the
-        # connection object is not hashable. Connections will not get
-        # garbage-collected, however, because a reference to them will persist
-        # in "_in_use" as long as the conn has not been closed.
-        self.conn_key = id
+        super(PooledDatabase, self).__init__(autoconnect=False, *args, **kwargs)
 
-        super(PooledDatabase, self).__init__(*args, **kwargs)
+    @property
+    def conn_key(self):
+        return threading.get_ident()
+
+    @property
+    def conn(self):
+        c = self._in_use[self.conn_key]
+        return c.connection
 
     def connect(self):
         if not self._wait_timeout:
@@ -81,7 +106,6 @@ class PooledDatabase(object):
             try:
                 # Remove the oldest connection from the heap.
                 ts, conn = heapq.heappop(self._connections)
-                key = self.conn_key(conn)
             except IndexError:
                 ts = conn = None
                 break
@@ -109,10 +133,23 @@ class PooledDatabase(object):
 
             conn = super(PooledDatabase, self)._connect()
             ts = time.time() - random.random() / 1000
-            key = self.conn_key(conn)
 
-        self._in_use[key] = PoolConnection(ts, conn, time.time())
+        self._in_use[self.conn_key] = PoolConnection(
+            ts, conn, time.time(), conn.cursor()
+        )
+
         return conn
+
+    def _new_cursor(self):
+        c = self._in_use[self.conn_key]
+        self._in_use[self.conn_key] = PoolConnection(
+            c.timestamp, c.connection, c.checked_out, c.connection.cursor()
+        )
+
+    @property
+    def cursor(self):
+        c = self._in_use[self.conn_key]
+        return c.cursor
 
     def _is_stale(self, timestamp):
         # Called on check-out and check-in to ensure the connection has
@@ -126,13 +163,13 @@ class PooledDatabase(object):
         # Called on check-in to make sure the connection can be re-used.
         return True
 
-    def _close(self, conn, close_conn=False):
-        key = self.conn_key(conn)
+    def _close(self, close_conn=False):
+        conn = self.conn
 
         if close_conn:
             super(PooledDatabase, self)._close(conn)
-        elif key in self._in_use:
-            pool_conn = self._in_use.pop(key)
+        elif self.conn_key in self._in_use:
+            pool_conn = self._in_use.pop(self.conn_key)
 
             if self._stale_timeout and self._is_stale(pool_conn.timestamp):
                 super(PooledDatabase, self)._close(conn)
@@ -150,7 +187,7 @@ class PooledDatabase(object):
         # marked as "in use" at the time it is closed. We will explicitly
         # remove it from the "in use" list, call "close()" for the
         # side-effects, and then explicitly close the connection.
-        self._in_use.pop(self.conn_key(conn), None)
+        self._in_use.pop(self.conn_key, None)
         self.close()
         self._close(conn, close_conn=True)
 

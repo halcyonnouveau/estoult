@@ -18,7 +18,7 @@ except ImportError:
     mysql = None
 
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 __all__ = [
     "ClauseError",
     "Database",
@@ -60,41 +60,6 @@ def _strip(string):
     return string.rstrip(" ").rstrip(",").rstrip("and")
 
 
-class FunctionMetaclass(type):
-
-    sql_fns = [
-        "count",
-        "sum",
-        "avg",
-        "ceil",
-        "distinct",
-        "concat",
-    ]
-
-    @staticmethod
-    def make_sql_fn(name):
-        def sql_fn(*args):
-            return f"{name}({str(', '.join([str(a) for a in args]))})"
-
-        return sql_fn
-
-    def __new__(cls, clsname, bases, attrs):
-        for f in cls.sql_fns:
-            attrs[f] = FunctionMetaclass.make_sql_fn(f)
-
-        return super(FunctionMetaclass, cls).__new__(cls, clsname, bases, attrs)
-
-
-class fn(metaclass=FunctionMetaclass):
-    @classmethod
-    def alias(cls, field, value):
-        return f"{field} as {value}"
-
-    @classmethod
-    def wild(cls, schema):
-        return f"{schema.__tablename__}.*"
-
-
 class OperatorMetaclass(type):
 
     sql_ops = {
@@ -109,7 +74,7 @@ class OperatorMetaclass(type):
     @staticmethod
     def make_fn(operator):
         def op_fn(field, value):
-            return Clause(f"%s {operator} %s", (field, value))
+            return Clause(f"{field} {operator} %s", (value,))
 
         return op_fn
 
@@ -136,39 +101,95 @@ class op(metaclass=OperatorMetaclass):
     @staticmethod
     def in_(field, value):
         if isinstance(value, Query):
-            return Clause(f"%s in ({str(value)})", (field))
+            return Clause(f"{field} in ({str(value)})", ())
 
         if isinstance(value, list) or isinstance(value, tuple):
             placeholders = ", ".join(["%s"] * len(value))
-            return Clause(f"%s in ({placeholders})", (field, value))
+            return Clause(f"{field} in ({placeholders})", (value,))
 
         raise ClauseError("`in` value can only be `subquery`, `list`, or `tuple`")
 
     @staticmethod
     def like(field, value):
         arg = f"%{value}%"
-        return Clause("%s like %s", (field, arg))
+        return Clause(f"{field} like %s", (arg,))
 
     @staticmethod
     def ilike(field, value):
         arg = f"%{value}%"
-        return Clause("%s ilike %s", (field, arg))
+        return Clause(f"{field} ilike %s", (arg,))
 
     @staticmethod
     def not_(field):
-        return Clause("not %s", (field))
+        return Clause(f"not {field}", ())
 
     @staticmethod
     def is_null(field):
-        return Clause("%s is null", (field))
+        return Clause(f"{field} is null", ())
 
     @staticmethod
     def not_null(field):
-        return Clause("%s is not null", (field))
+        return Clause(f"{field} is not null", ())
+
+
+class FunctionClauseMetaclass(type):
+    def __new__(cls, clsname, bases, attrs):
+        # Add op overloading
+        for name, operator in OperatorMetaclass.sql_ops.items():
+            attrs[f"__{name}__"] = OperatorMetaclass.make_fn(operator)
+
+        return super(FunctionClauseMetaclass, cls).__new__(cls, clsname, bases, attrs)
+
+
+class FunctionClause(Clause, metaclass=FunctionClauseMetaclass):
+    def __str__(self):
+        return self.clause
+
+
+class FunctionMetaclass(type):
+
+    sql_fns = [
+        "count",
+        "sum",
+        "avg",
+        "ceil",
+        "distinct",
+        "concat",
+    ]
+
+    @staticmethod
+    def make_sql_fn(name):
+        def sql_fn(*args):
+            return FunctionClause(
+                f"{name}({str(', '.join([str(a) for a in args]))})", ()
+            )
+
+        return sql_fn
+
+    def __new__(cls, clsname, bases, attrs):
+        for f in cls.sql_fns:
+            attrs[f] = FunctionMetaclass.make_sql_fn(f)
+
+        # Add op overloading
+        for name, operator in OperatorMetaclass.sql_ops.items():
+            attrs[f"__{name}__"] = OperatorMetaclass.make_fn(operator)
+
+        return super(FunctionMetaclass, cls).__new__(cls, clsname, bases, attrs)
+
+
+class fn(metaclass=FunctionMetaclass):
+    @staticmethod
+    def alias(field, value):
+        return FunctionClause(f"{field} as {value}", ())
+
+    @staticmethod
+    def wild(schema):
+        return FunctionClause(f"{schema.__tablename__}.*", ())
 
 
 class FieldMetaclass(type):
     def __new__(cls, clsname, bases, attrs):
+        # Add op overloading
         for name, operator in OperatorMetaclass.sql_ops.items():
             attrs[f"__{name}__"] = OperatorMetaclass.make_fn(operator)
 
@@ -243,6 +264,9 @@ class SchemaMetaclass(type):
                 pk = field
 
         return pk
+
+    def __getitem__(cls, item):
+        return getattr(cls, item)
 
 
 class Schema(metaclass=SchemaMetaclass):
@@ -336,8 +360,8 @@ class Schema(metaclass=SchemaMetaclass):
         params = []
 
         for key, value in changeset.items():
-            sql += "%s = %s, "
-            params.extend((str(key), str(value)))
+            sql += f"{key} = %s, "
+            params.append(str(value))
 
         sql = f"{_strip(sql)} where {str(cls.pk)} = %s"
 
@@ -407,8 +431,8 @@ class Query(metaclass=QueryMetaclass):
         changeset = self.schema.casval(changeset)
 
         for key, value in changeset.items():
-            self._query += "%s = %s, "
-            self._params.extend((str(key), str(value)))
+            self._query += f"{key} = %s, "
+            self._params.append(str(value))
 
         self._query = f"{_strip(self._query)}\n"
 
@@ -511,16 +535,13 @@ def _get_connection(func):
         if self.autoconnect is True:
             self.connect()
 
-        if self.cursor is None:
-            self.cursor = self.conn.cursor()
+        if self.is_trans is False:
+            self._new_cursor()
 
         f = func(self, *args, **kwargs)
 
-        if self.is_trans is False:
-            self.cursor = None
-
         if self.autoconnect is True:
-            self.conn.close()
+            self.close()
 
         return f
 
@@ -534,23 +555,37 @@ class Database:
         self.Schema = Schema
         self.Schema._database_ = self
 
-        self.cursor = None
-        self.conn = None
+        self._conn = None
+        self._cursor = None
         self.is_trans = False
-        self._connect = self._make__connect_func(args, kwargs)
+
+        self.cargs = args
+        self.ckwargs = kwargs
 
     def connect(self):
-        self.conn = self._connect()
+        self._conn = self._connect()
+
+    def conn(self):
+        return self._conn
 
     def _close(self):
-        self.conn.close()
+        self._conn.close()
 
     def close(self):
-        return self._close
+        return self._close()
+
+    def _new_cursor(self):
+        self._cursor = self.conn.cursor()
+
+    @property
+    def cursor(self):
+        if self._cursor is None:
+            self._cursor = self.conn.cursor()
+
+        return self._cursor
 
     @contextmanager
     def atomic(self, commit=True):
-        self.cursor = self.conn.cursor()
         # estoult says trans rights
         self.is_trans = True
 
@@ -566,7 +601,6 @@ class Database:
                 self.conn.rollback()
         finally:
             self.is_trans = False
-            self.cursor = None
 
     @_replace_placeholders
     def _execute(self, query, params):
@@ -617,12 +651,8 @@ class MySQLDatabase(Database):
 
         super().__init__(*args, **kwargs)
 
-    @classmethod
-    def _make__connect_func(cls, args, kwargs):
-        def _connect():
-            return mysql.connect(*args, **kwargs)
-
-        return _connect
+    def _connect(self):
+        return mysql.connect(*self.cargs, **self.ckwargs)
 
 
 class PostgreSQLDatabase(Database):
@@ -631,12 +661,8 @@ class PostgreSQLDatabase(Database):
 
         super().__init__(*args, **kwargs)
 
-    @classmethod
-    def _make__connect_func(cls, args, kwargs):
-        def _connect():
-            return psycopg2.connect(*args, **kwargs)
-
-        return _connect
+    def _connect(self):
+        return psycopg2.connect(*self.cargs, **self.ckwargs)
 
     @_get_connection
     def mogrify(self, query, params):
@@ -649,9 +675,5 @@ class SQLiteDatabase(Database):
 
         super().__init__(*args, **kwargs)
 
-    @classmethod
-    def _make__connect_func(cls, args, kwargs):
-        def _connect():
-            return sqlite3.connect(*args, **kwargs)
-
-        return _connect
+    def _connect(self):
+        return sqlite3.connect(*self.cargs, **self.ckwargs)
