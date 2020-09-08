@@ -82,9 +82,9 @@ Other operators are avaliable as methods:
 
     >>> query = Query(Car).select()
     # name = "Ferrari" OR engine = "GP2"
-    >>> query.where(op.or_(Car.name == "Ferrari", Meal.name == "GP2"))
+    >>> query.where(op.or_(Car.name == "Ferrari", Car.name == "GP2"))
     # name like '%Renault%'
-    >>> query.where(op.like(Meal.cook, op.like("Renault")))
+    >>> query.where(op.like(Car.name, "Renault"))
 
 Function operators
 ------------------

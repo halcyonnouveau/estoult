@@ -32,12 +32,12 @@ In a single-threaded application, only one connection will be created. It will b
 
    ``autoconnect`` is disabled so your application needs to ensure that connections are opened and closed when you are finished with them, so they can be returned to the pool. With a Flask server, it could look like this:
 
-.. code-block:: python
+   .. code-block:: python
 
-    @app.before_request
-    def open_connection():
-        db.connect()
+       @app.before_request
+       def open_connection():
+           db.connect()
 
-    @app.teardown_request
-    def close_connection(exc):
-        db.close()
+       @app.teardown_request
+       def close_connection(exc):
+           db.close()
