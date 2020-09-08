@@ -183,6 +183,10 @@ class fn(metaclass=FunctionMetaclass):
         return FunctionClause(f"{field} as {value}", ())
 
     @staticmethod
+    def cast(field, value):
+        return FunctionClause(f"cast({field} as {value})", ())
+
+    @staticmethod
     def wild(schema):
         return FunctionClause(f"{schema.__tablename__}.*", ())
 

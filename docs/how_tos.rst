@@ -108,3 +108,5 @@ Function operators are imported with the ``fn`` module.
      - ``.where(fn.concat(Person.first_name, "' '", Person.last_name) == "Carlos Sainz")``
    * - alias
      - ``.select(fn.alias(fn.sum(Person.weight), "weight"))``
+   * - cast
+     - ``.select(fn.cast(Person.dob, "datetime"))``
