@@ -10,7 +10,7 @@ Estoult is a Python toolkit for data mapping with an integrated query builder fo
 
 Features:
 
-- Not an ORM. Estoult treats the data, not objects, as first class citizens.
+- Not an ORM. Estoult doesn't attempt to apply relational algebra to objects.
 - Concise and composable (sub)queries.
 - Easy debugging by displaying any generated SQL in a readable format.
 - Performant as raw SQL. Estoult is **NOT** an ORM.
