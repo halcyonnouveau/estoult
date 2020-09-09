@@ -365,13 +365,13 @@ class Schema(metaclass=SchemaMetaclass):
 
         for key, value in changeset.items():
             sql += f"{key} = %s, "
-            params.append(str(value))
+            params.append(value)
 
-        sql += f"{_strip(sql)} where "
+        sql = f"{_strip(sql)} where "
 
         for key, value in old.items():
-            sql += f"{key} = %s and"
-            params.append(str(value))
+            sql += f"{key} = %s and "
+            params.append(value)
 
         return cls._database_.sql(_strip(sql), params)
 
@@ -382,8 +382,8 @@ class Schema(metaclass=SchemaMetaclass):
         params = []
 
         for key, value in row.items():
-            sql += f"{key} = %s and"
-            params.append(str(value))
+            sql += f"{key} = %s and "
+            params.append(value)
 
         return cls._database_.sql(_strip(sql), params)
 
@@ -444,7 +444,7 @@ class Query(metaclass=QueryMetaclass):
 
         for key, value in changeset.items():
             self._query += f"{key} = %s, "
-            self._params.append(str(value))
+            self._params.append(value)
 
         self._query = f"{_strip(self._query)}\n"
 
