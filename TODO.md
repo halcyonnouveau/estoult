@@ -1,15 +1,16 @@
 # TODOs
 
-- [ ] Better error handling and messages.
 - [ ] Support recursive CTE's.
-- [ ] Write tests.
 - [ ] Schema generator.
 - [ ] Yoyo-like migration tool.
 
 ## In Progress
 
-- [ ] Documentation (code and docs).
+- [ ] Write tests.
+- [ ] Better error handling and messages.
+- [ ] Complete documentation.
 
 ## Done
 
 - [x] Audit SQL injections.
+- [x] Basic documentation (code and docs).
