@@ -8,3 +8,4 @@ Estoult
    getting_started
    how_tos
    apocryphan
+   advanced
