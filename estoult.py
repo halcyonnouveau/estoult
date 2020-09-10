@@ -450,7 +450,7 @@ class Query(metaclass=QueryMetaclass):
 
         return self
 
-    def delete(self, row):
+    def delete(self):
         self._method = "sql"
         self._query = f"delete from {self.schema.__tablename__}\n"
         return self
