@@ -64,11 +64,11 @@ The SQL would look like this.
           and soundcloud.soundcloud_id is null
     )
 
-You'd easily be able to write this in Estoult, but you are intending to add more streaming services in the future and wont be bothered to keep having to change the query.
+You'd easily be able to write this in Estoult, but you know that you are intending to add more streaming services in the future and wont be bothered to keep having to change the query.
 
-Let's instead create this query procedurally.
+Instead we can create this query procedurally to minimise the amount of things you'll have to change.
 
-First, let's create a mapping for our tables.
+First, let's make a mapping for our tables.
 
 .. code-block:: python
 
@@ -95,7 +95,9 @@ For our ``where`` we would use list comprehension and then de-construct the list
 
 .. code-block:: python
 
-    select_query.where(*[op.is_null(s[f"{n}_id"]) for n, s in links.items()])
+    select_query.where(
+        *[op.is_null(s[f"{n}_id"]) for n, s in links.items()]
+    )
 
 You can access a ``Schema``'s fields as if they were a dict. In ``op.is_null(s[f"{n}_id"])`` we are doing just that, where ``s`` and ``n`` are the schema and name we get from ``links.items()``.
 

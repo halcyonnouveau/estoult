@@ -76,7 +76,29 @@ Operator Meaning
     >>> query.where(Meal.name != "Pizza")
     >>> query.where(Meal.calories > 400)
 
-Other operators are avaliable as methods:
+Other operators are available as methods from the ``op`` module.:
+
+.. list-table::
+   :widths: 20 80
+
+   * - Function
+     - Example
+   * - ``op.or_``
+     - ``.where(op.or_(Person.id == 1, Person.id == 2))``
+   * - ``op.and_``
+     - ``.where(op.and_(Person.id == 1, Person.id == 2))``
+   * - ``op.in_``
+     - ``.where(op.in_(Person.id, [1, 2, 3, 4]))``
+   * - ``op.like``
+     - ``.where(op.like(Person.name, "Name"))``
+   * - ``op.ilike``
+     - ``.where(op.ilike(Person.name, "Name"))`` (Postgres only)
+   * - ``op.not``
+     - ``.where(op.not_(Person.name == "Name"))``
+   * - ``op.is_null``
+     - ``.where(op.is_null(Person.dob))``
+   * - ``op.not_null``
+     - ``.where(op.not_null(Person.dob))``
 
 .. code-block:: python
 
@@ -94,19 +116,21 @@ Function operators are imported with the ``fn`` module.
 .. list-table::
    :widths: 20 80
 
-   * - count
+   * - Function
+     - Example
+   * - ``fn.count``
      - ``.select(fn.count(Person.id))``
-   * - sum
+   * - ``fn.sum``
      - ``.select(fn.sum(Person.weight))``
-   * - avg
+   * - ``fn.avg``
      - ``.select(fn.avg(Person.age))``
-   * - ceil
+   * - ``fn.ceil``
      - ``.where(fn.ceil(Person.height) == 180)``
-   * - distinct
+   * - ``fn.distinct``
      - ``.select(fn.distinct(Person.email))``
-   * - concat
+   * - ``fn.concat``
      - ``.where(fn.concat(Person.first_name, "' '", Person.last_name) == "Carlos Sainz")``
-   * - alias
+   * - ``fn.alias``
      - ``.select(fn.alias(fn.sum(Person.weight), "weight"))``
-   * - cast
+   * - ``fn.cast``
      - ``.select(fn.cast(Person.dob, "datetime"))``
