@@ -47,6 +47,34 @@ class Rider:
         # Migration path
         self._mig_path = Path(self._scr_path) / self.default_config["source"]
 
+        self.init_tables()
+
+    def init_tables(self):
+        self.db.sql(
+            """
+            create table if not exists %s (
+                id varchar(256) primary key not null,
+                migration varchar(256),
+                operation varchar(56) not null,
+                username varchar(128),
+                hostname varchar(128),
+                time timestamp
+            );
+        """
+            % (self.config["log_name"]),
+        )
+
+        self.db.sql(
+            """
+            create table if not exists %s (
+                id varchar(256) primary key not null,
+                migration varchar(256),
+                applied_at timestamp
+            );
+        """
+            % (self.config["table_name"]),
+        )
+
     def create(self, args):
         name = args.name
 
@@ -87,8 +115,9 @@ class Rider:
             "rollback", help="rollback to a migration"
         )
         rollback_parser.add_argument(
-            "-n" "--number", help="migration number", required=True
+            "-i" "--id", help="migration id", required=True
         )
 
-        args = parser.parse_args()
-        getattr(self, args.subcommand)(args)
+        with self.db.atomic():
+            args = parser.parse_args()
+            getattr(self, args.subcommand)(args)
