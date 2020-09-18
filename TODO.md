@@ -2,13 +2,13 @@
 
 - [ ] Support recursive CTE's.
 - [ ] Schema generator.
-- [ ] Yoyo-like migration tool.
 
 ## In Progress
 
 - [ ] Write tests.
 - [ ] Better error handling and messages.
 - [ ] Complete documentation.
+- [ ] Yoyo-like migration tool.
 
 ## Done
 

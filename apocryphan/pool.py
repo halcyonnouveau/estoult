@@ -50,12 +50,7 @@ PoolConnection = namedtuple(
 
 class PooledDatabase(object):
     def __init__(
-        self,
-        max_connections=20,
-        stale_timeout=None,
-        timeout=None,
-        *args,
-        **kwargs
+        self, max_connections=20, stale_timeout=None, timeout=None, *args, **kwargs
     ):
         self._max_connections = make_int(max_connections)
         self._stale_timeout = make_int(stale_timeout)
