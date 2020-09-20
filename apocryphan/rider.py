@@ -4,6 +4,7 @@ A migration tool for Estoult.
 
 import __main__
 import os
+import sys
 import argparse
 import time
 
@@ -23,7 +24,7 @@ __depends__ = {%s}
 steps = [
     step("")
 ]
-"""
+""".strip()
 
 
 def step(st):
@@ -35,7 +36,7 @@ class Rider:
     default_config = {
         "source": "./migrations",
         "table_name": "_rider_migrations",
-        "log_name": "_rider_log",
+        "log_name": "_rider_logs",
     }
 
     def __init__(self, db, config={}):
@@ -61,7 +62,7 @@ class Rider:
                 time timestamp
             );
         """
-            % (self.config["log_name"]),
+            % (self.config["log_name"]), ()
         )
 
         self.db.sql(
@@ -72,7 +73,7 @@ class Rider:
                 applied_at timestamp
             );
         """
-            % (self.config["table_name"]),
+            % (self.config["table_name"]), ()
         )
 
     def create(self, args):
@@ -120,4 +121,9 @@ class Rider:
 
         with self.db.atomic():
             args = parser.parse_args()
+
+            if args.subcommand is None:
+                parser.print_help(sys.stderr)
+                return
+
             getattr(self, args.subcommand)(args)
