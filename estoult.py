@@ -376,6 +376,10 @@ class Schema(metaclass=SchemaMetaclass):
         return cls._database_.sql(_strip(sql), params)
 
     @classmethod
+    def update_by_pk(cls, id, new):
+        return cls.update({cls.pk: id}, new)
+
+    @classmethod
     def delete(cls, row):
         # Deletes single row - look at `Query` for batch
         sql = f"delete from {cls.__tablename__} where "
@@ -386,6 +390,10 @@ class Schema(metaclass=SchemaMetaclass):
             params.append(value)
 
         return cls._database_.sql(_strip(sql), params)
+
+    @classmethod
+    def delete_by_pk(cls, id, new):
+        return cls.delete({cls.pk: id}, new)
 
 
 class QueryMetaclass(type):
