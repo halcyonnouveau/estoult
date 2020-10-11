@@ -207,7 +207,7 @@ class Field(metaclass=FieldMetaclass):
 
         self.caster = kwargs.get("caster")
 
-        self.null = kwargs.get("null")
+        self.null = kwargs.get("null", True)
         self.default = kwargs.get("default")
         self.primary_key = kwargs.get("primary_key") is True
 
@@ -279,7 +279,7 @@ class Schema(metaclass=SchemaMetaclass):
     __tablename__ = None
 
     @classmethod
-    def _cast(cls, row):
+    def _cast(cls, updating, row):
         # Allow you to use a Field as key
         for key, value in list(row.items()):
             if isinstance(key, Field):
@@ -288,35 +288,36 @@ class Schema(metaclass=SchemaMetaclass):
                 row[key] = value
 
         changeset = {}
-        updating = row.get(cls.pk.name) is not None
 
         for field in cls.fields:
-            value = row.get(field.name)
+            value = None
 
-            if value is None and field.name == cls.pk.name:
-                continue
+            if field.default is not None:
+                value = field.default
+
+            try:
+                value = row[field.name]
+            except KeyError:
+                if updating is True or field.name == cls.pk.name:
+                    continue
 
             if value is not None:
                 value = (
                     field.type(value) if field.caster is None else field.caster(value)
                 )
 
-            if field.default is not None and updating is False:
-                value = field.default
-
             changeset[field.name] = value
 
         return changeset
 
     @classmethod
-    def _validate(cls, row):
+    def _validate(cls, updating, row):
         changeset = {}
-        updating = row.get(cls.pk.name) is not None
 
         for field in cls.fields:
-            value = row.get(field.name)
-
-            if value is None:
+            try:
+                value = row[field.name]
+            except KeyError:
                 continue
 
             if field.null is False and value is None and updating is True:
@@ -328,8 +329,10 @@ class Schema(metaclass=SchemaMetaclass):
 
     @classmethod
     def casval(cls, row):
-        changeset = cls._cast(row)
-        changeset = cls._validate(changeset)
+        updating = row.get(cls.pk.name) is not None
+
+        changeset = cls._cast(updating, row)
+        changeset = cls._validate(updating, changeset)
 
         # A user specified validation function
         validate_func = getattr(cls, "validate", lambda x: x)
