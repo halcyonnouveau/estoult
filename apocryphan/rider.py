@@ -43,7 +43,7 @@ def _read_migration(path):
         tree = ast.parse(f.read())
 
     mod = {
-        "id": Path(path).name,
+        "id": Path(path).name.replace(".py", ""),
         "path": path,
         "doc": ast.get_docstring(tree).replace("\n", " "),
     }
@@ -183,16 +183,17 @@ class Rider:
                 depends = m["__depends__"]
 
                 if depends:
+                    name = depends.pop()
                     depends_applied = self.db.get_or_none(
                         "select * from %s where migration = %s"
                         % (self.config["table_name"], "%s"),
-                        (depends.pop(),),
+                        (name,),
                     )
 
                     if depends_applied is None:
                         raise Exception(
                             f"""
-                            {m['id']} depends on {m['__depends__']} but is not applied.
+                            {m['id']} depends on {name} but is not applied.
                             """.strip()
                         )
 
