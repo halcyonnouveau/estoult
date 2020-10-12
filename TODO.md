@@ -7,10 +7,11 @@
 
 - [ ] Write tests.
 - [ ] Better error handling and messages.
-- [ ] Complete documentation.
-- [ ] Yoyo-like migration tool.
+- [ ] Rollbacks for Rider.
 
 ## Done
 
 - [x] Audit SQL injections.
 - [x] Basic documentation (code and docs).
+- [x] Complete documentation.
+- [x] Yoyo-like migration tool.
