@@ -380,7 +380,7 @@ class Schema(metaclass=SchemaMetaclass):
 
     @classmethod
     def update_by_pk(cls, id, new):
-        return cls.update({cls.pk: id}, new)
+        return cls.update({cls.pk.name: id}, new)
 
     @classmethod
     def delete(cls, row):
@@ -396,7 +396,7 @@ class Schema(metaclass=SchemaMetaclass):
 
     @classmethod
     def delete_by_pk(cls, id, new):
-        return cls.delete({cls.pk: id}, new)
+        return cls.delete({cls.pk.name: id}, new)
 
 
 class QueryMetaclass(type):
