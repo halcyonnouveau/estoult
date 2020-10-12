@@ -265,10 +265,10 @@ class Rider:
 
         subparsers.add_parser("migrations", help="show all migrations")
 
-        rollback_parser = subparsers.add_parser(
-            "rollback", help="rollback to a migration"
-        )
-        rollback_parser.add_argument("-i" "--id", help="migration id", required=True)
+        # rollback_parser = subparsers.add_parser(
+        #     "rollback", help="rollback to a migration"
+        # )
+        # rollback_parser.add_argument("-i" "--id", help="migration id", required=True)
 
         with self.db.atomic():
             args = parser.parse_args()
