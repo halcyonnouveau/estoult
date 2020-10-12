@@ -41,3 +41,44 @@ In a single-threaded application, only one connection will be created. It will b
        @app.teardown_request
        def close_connection(exc):
            db.close()
+
+Rider
+-----
+
+``rider`` is a simple tool to help manage database migrations using the existing Estoult database object.
+
+Start by creating a script to invoke the command line tools using your ``db`` object.
+
+.. code-block:: python
+
+    from apocryphan.rider import Rider
+    from src.schemas.base import db
+
+    if __name__ == "__main__":
+        db.connect()  # For manual connection management
+        Rider(db).parse_args()
+        db.close()
+
+To create a new migration:
+
+.. code-block:: bash
+
+    python3 migrate.py create --name "init db"
+
+This will create a scaffold in the ``./migrations`` directory. You can change the source directory by passing a dictionary to ``Rider``.
+
+.. code-block:: python
+
+     Rider(db, {"source": "./my_dir"}).parse_args()
+
+View migrations:
+
+.. code-block:: bash
+
+    python3 migrate.py migrations
+
+Apply migrations:
+
+.. code-block:: bash
+
+    python3 migrate.py migrate
