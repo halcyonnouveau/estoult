@@ -21,7 +21,7 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     author="Justin Duch",
-    author_email="justin@justinduch.com",
+    author_email="justin@duch.me",
     url="https://github.com/halcyonnouveau/estoult",
     py_modules=["estoult"],
     packages=["apocryphan"],
@@ -33,6 +33,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     license="MIT",
 )
