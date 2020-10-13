@@ -47,38 +47,40 @@ Rider
 
 ``rider`` is a simple tool to help manage database migrations using the existing Estoult database object.
 
-Start by creating a script (eg. ``rider.py``) to invoke the command line tools using your ``db`` object.
+Start by creating a ``rider.py`` file to tell ``rider`` about your database object.
 
 .. code-block:: python
 
-    from apocryphan.rider import Rider
     from src.schemas.base import db
 
-    if __name__ == "__main__":
-        db.connect()  # For manual connection management
-        Rider(db).parse_args()
-        db.close()
+    # Export the db
+    # Not actually needed, but my linter screams at me otherwise
+    db = db
+
+    # Default config
+    config = {
+        # Path where migrations are stored
+        "source": "./migrations",
+        # Table name for migrations
+        "table_name": "_rider_migrations",
+        # Table name of migration logs
+        "log_name": "_rider_logs",
+    }
 
 Create a new migration with a description.
 
 .. code-block:: bash
 
-    python3 rider.py create -d "init db"
-
-This will create a scaffold in the ``./migrations`` directory. You can change the source directory by passing a dictionary to ``Rider``.
-
-.. code-block:: python
-
-     Rider(db, {"source": "./my_dir"}).parse_args()
+    rider create -d "init db"
 
 View migrations:
 
 .. code-block:: bash
 
-    python3 rider.py migrations
+    rider migrations
 
 Apply migrations:
 
 .. code-block:: bash
 
-    python3 rider.py migrate
+    rider migrate
