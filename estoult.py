@@ -20,6 +20,7 @@ except ImportError:
 
 __version__ = "0.4.0"
 __all__ = [
+    "Clause",
     "ClauseError",
     "Database",
     "DatabaseError",
@@ -27,6 +28,7 @@ __all__ = [
     "Field",
     "FieldError",
     "fn",
+    "FunctionClause",
     "op",
     "Query",
     "QueryError",
@@ -53,39 +55,94 @@ class DatabaseError(EstoultError):
     pass
 
 
-Clause = namedtuple("Clause", ["clause", "params"])
+_sql_ops = {
+    "eq": "=",
+    "lt": "<",
+    "le": "<=",
+    "gt": ">",
+    "ge": ">=",
+    "ne": "<>",
+}
+
+_Clause = namedtuple("Clause", ["clause", "params"])
+
+
+def _parse_arg(arg):
+    if isinstance(arg, _Clause):
+        c = arg.clause
+        args = list(arg.params)
+    elif isinstance(arg, Field):
+        c = str(arg)
+        args = []
+    else:
+        c = "%s"
+        args = [arg]
+
+    return c, args
 
 
 def _strip(string):
     return string.rstrip(" ").rstrip(",").rstrip("and")
 
 
-class OperatorMetaclass(type):
+def _make_op(operator):
+    def sql_op(arg1, arg2):
+        arg1 = _parse_arg(arg1)
+        arg2 = _parse_arg(arg2)
 
-    sql_ops = {
-        "eq": "=",
-        "lt": "<",
-        "le": "<=",
-        "gt": ">",
-        "ge": ">=",
-        "ne": "<>",
-    }
+        return Clause(f"{arg1[0]} {operator} {arg2[0]}", tuple(arg1[1] + arg2[1]))
 
-    @staticmethod
-    def make_fn(operator):
-        def op_fn(field, value):
-            return Clause(f"{field} {operator} %s", (value,))
+    return sql_op
 
-        return op_fn
 
+def _make_fn(name):
+    def sql_fn(*args):
+        return FunctionClause(f"{name}({str(', '.join([str(a) for a in args]))})", ())
+
+    return sql_fn
+
+
+class ClauseMetaclass(type):
     def __new__(cls, clsname, bases, attrs):
-        for name, operator in cls.sql_ops.items():
-            attrs[name] = OperatorMetaclass.make_fn(operator)
+        # Add op overloading
+        for name, operator in _sql_ops.items():
+            attrs[f"__{name}__"] = _make_op(operator)
+
+        return super(ClauseMetaclass, cls).__new__(cls, clsname, bases, attrs)
+
+
+class Clause(_Clause, metaclass=ClauseMetaclass):
+    def __str__(self):
+        return self.clause
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, comp):
+        return str(self) == comp
+
+
+class FunctionClause(Clause):
+    pass
+
+
+class OperatorMetaclass(type):
+    def __new__(cls, clsname, bases, attrs):
+        for name, operator in _sql_ops.items():
+            attrs[name] = _make_op(operator)
 
         return super(OperatorMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
 
 class op(metaclass=OperatorMetaclass):
+    @classmethod
+    def add_op(cls, name, op):
+        def func(arg1, arg2):
+            fn = _make_op(op)
+            return fn(arg1, arg2)
+
+        setattr(cls, name, staticmethod(func))
+
     @staticmethod
     def or_(cond_1, cond_2):
         return Clause(
@@ -132,20 +189,6 @@ class op(metaclass=OperatorMetaclass):
         return Clause(f"{field} is not null", ())
 
 
-class FunctionClauseMetaclass(type):
-    def __new__(cls, clsname, bases, attrs):
-        # Add op overloading
-        for name, operator in OperatorMetaclass.sql_ops.items():
-            attrs[f"__{name}__"] = OperatorMetaclass.make_fn(operator)
-
-        return super(FunctionClauseMetaclass, cls).__new__(cls, clsname, bases, attrs)
-
-
-class FunctionClause(Clause, metaclass=FunctionClauseMetaclass):
-    def __str__(self):
-        return self.clause
-
-
 class FunctionMetaclass(type):
 
     sql_fns = [
@@ -157,27 +200,26 @@ class FunctionMetaclass(type):
         "concat",
     ]
 
-    @staticmethod
-    def make_sql_fn(name):
-        def sql_fn(*args):
-            return FunctionClause(
-                f"{name}({str(', '.join([str(a) for a in args]))})", ()
-            )
-
-        return sql_fn
-
     def __new__(cls, clsname, bases, attrs):
         for f in cls.sql_fns:
-            attrs[f] = FunctionMetaclass.make_sql_fn(f)
+            attrs[f] = _make_fn(f)
 
         # Add op overloading
-        for name, operator in OperatorMetaclass.sql_ops.items():
-            attrs[f"__{name}__"] = OperatorMetaclass.make_fn(operator)
+        for name, operator in _sql_ops.items():
+            attrs[f"__{name}__"] = _make_op(operator)
 
         return super(FunctionMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
 
 class fn(metaclass=FunctionMetaclass):
+    @classmethod
+    def add_fn(cls, name, sql_fn):
+        def func(*args):
+            fn = _make_fn(sql_fn)
+            return fn(*args)
+
+        setattr(cls, name, staticmethod(func))
+
     @staticmethod
     def alias(field, value):
         return FunctionClause(f"{field} as {value}", ())
@@ -194,8 +236,8 @@ class fn(metaclass=FunctionMetaclass):
 class FieldMetaclass(type):
     def __new__(cls, clsname, bases, attrs):
         # Add op overloading
-        for name, operator in OperatorMetaclass.sql_ops.items():
-            attrs[f"__{name}__"] = OperatorMetaclass.make_fn(operator)
+        for name, operator in _sql_ops.items():
+            attrs[f"__{name}__"] = _make_op(operator)
 
         return super(FieldMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
@@ -510,21 +552,33 @@ class Query(metaclass=QueryMetaclass):
 
     def order_by(self, *args):
         # Example: .order_by(Frog.id, {Frog.name: "desc"})
+        o = "order by "
         params = []
 
         for a in args:
+            v = None
+
             if isinstance(a, dict):
-                for k, v in a.items():
-                    if v != "asc" and v != "desc":
-                        raise QueryError("Value must be 'asc' or 'desc'")
+                k, v = a.items()[0]
 
-                    params.extend([str(k), v])
+                if v != "asc" and v != "desc":
+                    raise QueryError("Value must be 'asc' or 'desc'")
             else:
-                params.extend([str(a, "asc")])
+                k = a
 
-        s = ", ".join(["%s %s" for a in args]) % tuple(params)
+            if isinstance(k, Clause):
+                c, p = _parse_arg(k)
+                o += "%s " % c
+                params.extend(p)
+            else:
+                o += "%s "
+                params.append(str(v))
 
-        self._query += f"order by {s}\n"
+            if v:
+                o += f"{v}, "
+
+        self._query += f"{_strip(o)}\n"
+        self._params.extend(params)
 
         return self
 
