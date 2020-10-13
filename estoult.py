@@ -28,7 +28,6 @@ __all__ = [
     "Field",
     "FieldError",
     "fn",
-    "FunctionClause",
     "op",
     "Query",
     "QueryError",
@@ -97,7 +96,7 @@ def _make_op(operator):
 
 def _make_fn(name):
     def sql_fn(*args):
-        return FunctionClause(f"{name}({str(', '.join([str(a) for a in args]))})", ())
+        return Clause(f"{name}({str(', '.join([str(a) for a in args]))})", ())
 
     return sql_fn
 
@@ -120,10 +119,6 @@ class Clause(_Clause, metaclass=ClauseMetaclass):
 
     def __eq__(self, comp):
         return str(self) == comp
-
-
-class FunctionClause(Clause):
-    pass
 
 
 class OperatorMetaclass(type):
@@ -222,15 +217,15 @@ class fn(metaclass=FunctionMetaclass):
 
     @staticmethod
     def alias(field, value):
-        return FunctionClause(f"{field} as {value}", ())
+        return Clause(f"{field} as {value}", ())
 
     @staticmethod
     def cast(field, value):
-        return FunctionClause(f"cast({field} as {value})", ())
+        return Clause(f"cast({field} as {value})", ())
 
     @staticmethod
     def wild(schema):
-        return FunctionClause(f"{schema.__tablename__}.*", ())
+        return Clause(f"{schema.__tablename__}.*", ())
 
 
 class FieldMetaclass(type):
