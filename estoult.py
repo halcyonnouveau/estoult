@@ -210,10 +210,6 @@ class FunctionMetaclass(type):
         for f in cls.sql_fns:
             attrs[f] = _make_fn(f)
 
-        # Add op overloading
-        for name, operator in _sql_ops.items():
-            attrs[f"__{name}__"] = _make_op(operator)
-
         return super(FunctionMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
 
