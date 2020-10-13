@@ -67,7 +67,7 @@ _Clause = namedtuple("Clause", ["clause", "params"])
 
 
 def _parse_arg(arg):
-    if isinstance(arg, _Clause):
+    if isinstance(arg, Clause):
         c = arg.clause
         args = list(arg.params)
     elif isinstance(arg, Field):
@@ -81,7 +81,12 @@ def _parse_arg(arg):
 
 
 def _strip(string):
-    return string.rstrip(" ").rstrip(",").rstrip("and")
+    string = string.rstrip(" ,")
+
+    if string.endswith("and"):
+        string = string[:-3]
+
+    return string
 
 
 def _make_op(operator):
@@ -216,12 +221,14 @@ class fn(metaclass=FunctionMetaclass):
         setattr(cls, name, staticmethod(func))
 
     @staticmethod
-    def alias(field, value):
-        return Clause(f"{field} as {value}", ())
+    def alias(arg1, arg2):
+        s, p = _parse_arg(arg1)
+        return Clause(f"{s} as {arg2}", tuple(p))
 
     @staticmethod
-    def cast(field, value):
-        return Clause(f"cast({field} as {value})", ())
+    def cast(arg1, arg2):
+        s, p = _parse_arg(arg1)
+        return Clause(f"cast({s} as {arg2})", tuple(p))
 
     @staticmethod
     def wild(schema):
@@ -476,11 +483,19 @@ class Query(metaclass=QueryMetaclass):
         self._method = "select"
 
         if len(args) < 1:
-            args = "*"
+            query = "*"
         else:
-            args = ", ".join([str(a) for a in args])
+            query = ""
 
-        self._query = f"select {args} from {self.schema.__tablename__}\n"
+            for arg in args:
+                if isinstance(arg, Clause):
+                    string, params = arg
+                    query += f"{string}, "
+                    self._params.extend(params)
+                else:
+                    query += f"{arg}, "
+
+        self._query = f"select {_strip(query)} from {self.schema.__tablename__}\n"
 
         return self
 
