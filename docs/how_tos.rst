@@ -139,7 +139,7 @@ Function operators are imported with the ``fn`` module.
 Adding Ops/Fns
 --------------
 
-Estoult comes with the most important and commonly used functions/operators for SQL. However you can easily add additional functionality if you need.
+Estoult comes with the most important and commonly used functions/operators for SQL. However, Estoult is not an ORM and is inherently hackable which means you can easily add additional functionality if you need.
 
 If you wanted to add the ``<->`` operator from PostgreSQL's `pg_trgm <https://www.postgresql.org/docs/current/pgtrgm.html>`_ extension, you would use the ``add_op`` from ``op`` anywhere Estoult is always imported from (most likely where your database object is).
 
