@@ -56,7 +56,7 @@ Estoult by default only validates the type of a field. You can easily extend thi
 Query operators
 ---------------
 
-Common query operators can be used as overloaded python operators in every ``Field``. These are:
+Common query operators can be used as overloaded python operators in every ``Field``/``Clause``. These are:
 
 ======== =======
 Operator Meaning
@@ -104,7 +104,7 @@ Other operators are available as methods from the ``op`` module.:
 
     >>> query = Query(Car).select()
     # name = "Ferrari" OR engine = "GP2"
-    >>> query.where(op.or_(Car.name == "Ferrari", Car.name == "GP2"))
+    >>> query.where(op.or_(Car.name == "Ferrari", Car.engine == "GP2"))
     # name like '%Renault%'
     >>> query.where(op.like(Car.name, "Renault"))
 
@@ -134,3 +134,35 @@ Function operators are imported with the ``fn`` module.
      - ``.select(fn.alias(fn.sum(Person.weight), "weight"))``
    * - ``fn.cast``
      - ``.select(fn.cast(Person.dob, "datetime"))``
+
+
+Adding Ops/Fns
+--------------
+
+Estoult comes with the most important and commonly used functions/operators for SQL. However you can easily add additional functionality if you need.
+
+If you wanted to add the ``<->`` operator from PostgreSQL's `pg_trgm <https://www.postgresql.org/docs/current/pgtrgm.html>`_ extension, you would use the ``add_op`` from ``op`` anywhere Estoult is always imported from (most likely where your database object is).
+
+
+.. code-block:: python
+
+    from estoult import PostgreSQLDatabase, op
+
+    db = PostgreSQLDatabase(...)
+
+    # Add the <-> operator here and call it "trgm"
+    op.add_op("trgm", "<->")
+
+Now we can use it anywhere:
+
+.. code-block:: python
+
+    from estoult import Query, op
+
+    # select * from customers order by name <-> 'glgamish' limit 10;
+    print(Query(Customer).select()
+        .order_by(op.trgm(cls.name, "glgamish"))
+        .limit(10)
+        .execute())
+
+The same can be done for the ``fn`` module using ``add_fn``.
