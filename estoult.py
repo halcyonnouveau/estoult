@@ -173,8 +173,14 @@ class op(metaclass=OperatorMetaclass):
 
     @staticmethod
     def ilike(field, value):
+        # Does a case insensitive `like`. Only postgres has this operator,
+        # but we can hack it together for the others
         arg = f"%{value}%"
-        return Clause(f"{field} ilike %s", (arg,))
+
+        if psycopg2:
+            return Clause(f"{field} ilike %s", (arg,))
+
+        return Clause(f"lower({field}) like lower(%s)", (arg,))
 
     @staticmethod
     def not_(field):

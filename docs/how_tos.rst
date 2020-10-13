@@ -92,7 +92,7 @@ Other operators are available as methods from the ``op`` module.:
    * - ``op.like``
      - ``.where(op.like(Person.name, "Name"))``
    * - ``op.ilike``
-     - ``.where(op.ilike(Person.name, "Name"))`` (Postgres only)
+     - ``.where(op.ilike(Person.name, "Name"))``
    * - ``op.not``
      - ``.where(op.not_(Person.name == "Name"))``
    * - ``op.is_null``
