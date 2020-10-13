@@ -1,3 +1,5 @@
+![logo](/docs/la_black_luna.png)
+
 # Estoult
 
 [![PyPI](https://img.shields.io/pypi/v/estoult)](https://pypi.org/project/estoult/)
