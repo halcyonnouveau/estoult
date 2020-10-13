@@ -259,7 +259,9 @@ class Rider:
         )
 
         create_parser = subparsers.add_parser("create", help="create a new migration")
-        create_parser.add_argument("-n", "--name", help="migration name", required=True)
+        create_parser.add_argument(
+            "-d", "--description", help="migration description", required=True
+        )
 
         subparsers.add_parser("migrate", help="migrate a repo")
 

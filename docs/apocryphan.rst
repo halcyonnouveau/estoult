@@ -1,7 +1,7 @@
 Apocryphan
 ==========
 
-Estoult includes a number of extentions in the ``apocryphan`` namespace.
+Estoult includes a number of extensions in the ``apocryphan`` namespace.
 
 Connection pooling
 ------------------
@@ -47,7 +47,7 @@ Rider
 
 ``rider`` is a simple tool to help manage database migrations using the existing Estoult database object.
 
-Start by creating a script to invoke the command line tools using your ``db`` object.
+Start by creating a script (eg. ``rider.py``) to invoke the command line tools using your ``db`` object.
 
 .. code-block:: python
 
@@ -59,11 +59,11 @@ Start by creating a script to invoke the command line tools using your ``db`` ob
         Rider(db).parse_args()
         db.close()
 
-To create a new migration:
+Create a new migration with a description.
 
 .. code-block:: bash
 
-    python3 migrate.py create --name "init db"
+    python3 rider.py create -d "init db"
 
 This will create a scaffold in the ``./migrations`` directory. You can change the source directory by passing a dictionary to ``Rider``.
 
@@ -75,10 +75,10 @@ View migrations:
 
 .. code-block:: bash
 
-    python3 migrate.py migrations
+    python3 rider.py migrations
 
 Apply migrations:
 
 .. code-block:: bash
 
-    python3 migrate.py migrate
+    python3 rider.py migrate
