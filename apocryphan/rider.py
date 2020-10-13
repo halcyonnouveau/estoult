@@ -1,8 +1,8 @@
+#!/usr/bin/env python
 r"""
 A migration tool for Estoult.
 """
 
-import __main__
 import os
 import re
 import glob
@@ -90,6 +90,18 @@ def _print_table(rows):
             print("%*s = %s" % (hwidth, row._fields[i], row[i]))
 
 
+def _atomic(func):
+    def wrapper(self, *args, **kwargs):
+        self.db.connect()
+
+        with self.db.atomic():
+            func(self, *args, **kwargs)
+
+        self.db.close()
+
+    return wrapper
+
+
 class Rider:
 
     default_config = {
@@ -100,15 +112,14 @@ class Rider:
 
     def __init__(self, db, config={}):
         self.db = db
+        self.db.autoconnect = False
         self.config = {**Rider.default_config, **config}
 
-        # Script path
-        self._scr_path = os.path.dirname(os.path.realpath(__main__.__file__))
-        # Migration path
-        self._mig_path = Path(self._scr_path) / self.config["source"]
+        self._mig_path = Path(os.getcwd()) / self.config["source"]
 
         self.init_tables()
 
+    @_atomic
     def init_tables(self):
         self.db.sql(
             """
@@ -165,6 +176,7 @@ class Rider:
 
         print(f"Created migration scaffold in {path}")
 
+    @_atomic
     def migrate(self, _args):
         migs = self._get_migrations()
 
@@ -175,57 +187,57 @@ class Rider:
             )
         ]
 
-        with self.db.atomic():
-            for m in migs:
-                if m["id"] in applied:
-                    continue
+        for m in migs:
+            if m["id"] in applied:
+                continue
 
-                depends = m["__depends__"]
+            depends = m["__depends__"]
 
-                if depends:
-                    name = depends.pop()
-                    depends_applied = self.db.get_or_none(
-                        "select * from %s where migration = %s"
-                        % (self.config["table_name"], "%s"),
-                        (name,),
+            if depends:
+                name = depends.pop()
+                depends_applied = self.db.get_or_none(
+                    "select * from %s where migration = %s"
+                    % (self.config["table_name"], "%s"),
+                    (name,),
+                )
+
+                if depends_applied is None:
+                    raise Exception(
+                        f"""
+                        {m['id']} depends on {name} but is not applied.
+                        """.strip()
                     )
 
-                    if depends_applied is None:
-                        raise Exception(
-                            f"""
-                            {m['id']} depends on {name} but is not applied.
-                            """.strip()
-                        )
+            steps = m["steps"]
 
-                steps = m["steps"]
+            for step in steps:
+                self.db.sql(step, ())
 
-                for step in steps:
-                    self.db.sql(step, ())
+            self.db.sql(
+                "insert into %s (migration) values (%s)"
+                % (self.config["table_name"], "%s"),
+                (m["id"],),
+            )
 
-                self.db.sql(
-                    "insert into %s (migration) values (%s)"
-                    % (self.config["table_name"], "%s"),
-                    (m["id"],),
-                )
-
-                self.db.sql(
-                    """
-                    insert into %s
-                    (id, migration, operation, username, hostname)
-                    values (%s, %s, %s, %s, %s)
+            self.db.sql(
                 """
-                    % (self.config["log_name"], "%s", "%s", "%s", "%s", "%s"),
-                    (
-                        str(uuid.uuid4()),
-                        m["id"],
-                        "apply",
-                        getpass.getuser(),
-                        socket.gethostname(),
-                    ),
-                )
+                insert into %s
+                (id, migration, operation, username, hostname)
+                values (%s, %s, %s, %s, %s)
+            """
+                % (self.config["log_name"], "%s", "%s", "%s", "%s", "%s"),
+                (
+                    str(uuid.uuid4()),
+                    m["id"],
+                    "apply",
+                    getpass.getuser(),
+                    socket.gethostname(),
+                ),
+            )
 
-                print(f"Applied migration: {m['id']}")
+            print(f"Applied migration: {m['id']}")
 
+    @_atomic
     def migrations(self, _args):
         migs = self._get_migrations()
 
@@ -259,9 +271,7 @@ class Rider:
         )
 
         create_parser = subparsers.add_parser("create", help="create a new migration")
-        create_parser.add_argument(
-            "-d", "--description", help="migration description", required=True
-        )
+        create_parser.add_argument("-n", "--name", help="migration name", required=True)
 
         subparsers.add_parser("migrate", help="migrate a repo")
 
@@ -272,11 +282,39 @@ class Rider:
         # )
         # rollback_parser.add_argument("-i" "--id", help="migration id", required=True)
 
-        with self.db.atomic():
-            args = parser.parse_args()
+        args = parser.parse_args()
 
-            if args.subcommand is None:
-                parser.print_help(sys.stderr)
-                return
+        if args.subcommand is None:
+            parser.print_help(sys.stderr)
+            return
 
-            getattr(self, args.subcommand)(args)
+        getattr(self, args.subcommand)(args)
+
+
+def entry():
+    path = os.getcwd()
+
+    try:
+        r = open(path + "/rider.py").read()
+    except FileNotFoundError:
+        print("Error: No rider.py file found")
+        sys.exit()
+
+    sys.path.append(path)
+
+    mod = {}
+    exec(r, mod)
+
+    try:
+        db = mod["db"]
+    except KeyError:
+        print("`db` object not exported")
+        sys.exit()
+
+    config = mod.get("config") or {}
+
+    Rider(db, config).parse_args()
+
+
+if __name__ == "__main__":
+    entry()
