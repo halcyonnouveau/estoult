@@ -371,9 +371,7 @@ class Schema(metaclass=SchemaMetaclass):
         return changeset
 
     @classmethod
-    def casval(cls, row):
-        updating = row.get(cls.pk.name) is not None
-
+    def casval(cls, row, updating):
         changeset = cls._cast(updating, row)
         changeset = cls._validate(updating, changeset)
 
@@ -385,7 +383,7 @@ class Schema(metaclass=SchemaMetaclass):
 
     @classmethod
     def insert(cls, obj):
-        changeset = cls.casval(obj)
+        changeset = cls.casval(obj, updating=False)
 
         params = list(changeset.values())
         fields = ", ".join(changeset.keys())
@@ -405,7 +403,7 @@ class Schema(metaclass=SchemaMetaclass):
     def update(cls, old, new):
         # This updates a single row only, if you want to update several
         # use `update` in `Query`
-        changeset = cls.casval({**old, **new})
+        changeset = cls.casval({**old, **new}, updating=True)
         sql = f"update {cls.__tablename__} set "
         params = []
 
@@ -502,7 +500,7 @@ class Query(metaclass=QueryMetaclass):
         self._method = "sql"
         self._query = f"update {self.schema.__tablename__} set "
 
-        changeset = self.schema.casval(changeset)
+        changeset = self.schema.casval(changeset, updating=True)
 
         for key, value in changeset.items():
             self._query += f"{key} = %s, "
@@ -599,13 +597,11 @@ class Query(metaclass=QueryMetaclass):
         return deepcopy(self)
 
     def __str__(self):
-        return f"""
-            {(self.schema._database_
-                .mogrify(self._query, self._params)
-                .decode("utf-8"))}
-        """.replace(
-            "\n", " "
-        ).strip()
+        return self.schema._database_.mogrify(self._query, self._params).decode("utf-8")
+
+    def __repr__(self):
+        q = _strip(self._query.replace("\n", " "))
+        return f'<Query query="{q}" params={self._params}>'
 
 
 def _replace_placeholders(func):
