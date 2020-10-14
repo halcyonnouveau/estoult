@@ -70,7 +70,7 @@ def _parse_arg(arg):
     elif isinstance(arg, Field):
         return str(arg), ()
     elif isinstance(arg, Query):
-        return arg._query, tuple(arg._params)
+        return arg._query, arg._params
     elif isinstance(arg, list) or isinstance(arg, tuple):
         placeholders = ", ".join(["%s"] * len(arg))
         return placeholders, tuple(arg)
@@ -456,7 +456,7 @@ class QueryMetaclass(type):
     def make_join_fn(join_type):
         def join_fn(self, schema, on):
             q = f"{str(on[0])} = {str(on[1])}"
-            self._query += f"{join_type} {schema.__tablename__} on {q}\n"
+            self._add_node(f"{join_type} {schema.__tablename__} on {q}", ())
             return self
 
         return join_fn
@@ -468,51 +468,69 @@ class QueryMetaclass(type):
         return super(QueryMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
 
+Node = namedtuple("Node", ["node", "params"])
+
+
 class Query(metaclass=QueryMetaclass):
     def __init__(self, schema):
         self.schema = schema
 
         self._method = None
-        self._query = ""
-        self._params = []
+        self._nodes = []
+
+    def _add_node(self, node, params):
+        self._nodes.append(Node(_strip(node), params))
+
+    @property
+    def _query(self):
+        return " ".join([x.node for x in self._nodes])
+
+    @property
+    def _params(self):
+        return tuple([p for x in self._nodes for p in x.params])
 
     def select(self, *args):
         self._method = "select"
 
-        if len(args) < 1:
-            query = "*"
-        else:
-            query = ""
+        query = ""
+        params = []
 
+        if len(args) < 1:
+            query += "*"
+        else:
             for arg in args:
                 if isinstance(arg, Clause):
-                    string, params = arg
+                    string, p = arg
                     query += f"{string}, "
-                    self._params.extend(params)
+                    params.extend(p)
                 else:
                     query += f"{arg}, "
 
-        self._query = f"select {_strip(query)} from {self.schema.__tablename__}\n"
+        self._add_node(
+            f"select {_strip(query)} from {self.schema.__tablename__}", params
+        )
 
         return self
 
     def update(self, changeset):
         self._method = "sql"
-        self._query = f"update {self.schema.__tablename__} set "
 
         changeset = self.schema.casval(changeset, updating=True)
 
-        for key, value in changeset.items():
-            self._query += f"{key} = %s, "
-            self._params.append(value)
+        query = ""
+        params = []
 
-        self._query = f"{_strip(self._query)}\n"
+        for key, value in changeset.items():
+            query += f"{key} = %s, "
+            params.append(value)
+
+        self._add_node(f"update {self.schema.__tablename__} set {query}", params)
 
         return self
 
     def delete(self):
         self._method = "sql"
-        self._query = f"delete from {self.schema.__tablename__}\n"
+        self._add_node(f"delete from {self.schema.__tablename__}", ())
         return self
 
     def get(self, *args):
@@ -526,40 +544,39 @@ class Query(metaclass=QueryMetaclass):
         return self
 
     def union(self):
-        self._query += "union\n"
+        self._add_node("union", ())
         return self
 
     def where(self, *clauses):
-        self._query += "where "
+        query = ""
+        params = []
 
         for clause in clauses:
-            string, params = clause
+            string, p = clause
 
             # We can always add an `and` to the end cus it get stripped off ;)
-            self._query += f"{string} and "
-            self._params.extend(params)
+            query += f"{string} and "
+            params.extend(p)
 
-        self._query = f"{_strip(self._query)}\n"
+        self._add_node(f"where {query}", params)
 
         return self
 
     def limit(self, *args):
         # Example: .limit(1) or limit(1, 2)
         if len(args) == 1:
-            self._query += "limit %s\n"
+            self._add_node("limit %s", (args,))
         elif len(args) == 2:
             # `offset` works in mysql and postgres
-            self._query += "limit %s offset %s\n"
+            self._add_node("limit %s offset %s", args)
         else:
             raise QueryError("`limit` has too many arguments")
-
-        self._params.extend(args)
 
         return self
 
     def order_by(self, *args):
         # Example: .order_by(Frog.id, {Frog.name: "desc"})
-        o = "order by "
+        query = "order by "
         params = []
 
         for a in args:
@@ -575,17 +592,16 @@ class Query(metaclass=QueryMetaclass):
 
             if isinstance(k, Clause):
                 c, p = _parse_arg(k)
-                o += "%s " % c
+                query += "%s " % c
                 params.extend(p)
             else:
-                o += "%s "
+                query += "%s "
                 params.append(str(v))
 
             if v:
-                o += f"{v}, "
+                query += f"{v}, "
 
-        self._query += f"{_strip(o)}\n"
-        self._params.extend(params)
+        self._add_node(f"order by {query}", params)
 
         return self
 
@@ -600,8 +616,7 @@ class Query(metaclass=QueryMetaclass):
         return self.schema._database_.mogrify(self._query, self._params).decode("utf-8")
 
     def __repr__(self):
-        q = _strip(self._query.replace("\n", " "))
-        return f'<Query query="{q}" params={self._params}>'
+        return f'<Query query="{self._query}" params={self._params}>'
 
 
 def _replace_placeholders(func):
