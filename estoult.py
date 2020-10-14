@@ -70,7 +70,7 @@ def _parse_arg(arg):
     elif isinstance(arg, Field):
         return str(arg), ()
     elif isinstance(arg, Query):
-        return arg._sql, arg._params
+        return arg._query, arg._params
     elif isinstance(arg, list) or isinstance(arg, tuple):
         placeholders = ", ".join(["%s"] * len(arg))
         return placeholders, tuple(arg)
