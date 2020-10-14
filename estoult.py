@@ -63,21 +63,26 @@ _sql_ops = {
     "ne": "<>",
 }
 
-_Clause = namedtuple("Clause", ["clause", "params"])
-
 
 def _parse_arg(arg):
     if isinstance(arg, Clause):
-        c = arg.clause
-        args = list(arg.params)
+        return arg
     elif isinstance(arg, Field):
-        c = str(arg)
-        args = []
-    else:
-        c = "%s"
-        args = [arg]
+        return str(arg), ()
+    elif isinstance(arg, Query):
+        return arg._sql, arg._params
+    elif isinstance(arg, list) or isinstance(arg, tuple):
+        placeholders = ", ".join(["%s"] * len(arg))
+        return placeholders, tuple(arg)
 
-    return c, args
+    return "%s", (arg,)
+
+
+def _parse_args(func):
+    def wrapper(*args):
+        return func(*[_parse_arg(a) for a in args])
+
+    return wrapper
 
 
 def _strip(string):
@@ -90,20 +95,18 @@ def _strip(string):
 
 
 def _make_op(operator):
-    def sql_op(lhs, rhs):
-        lhs = _parse_arg(lhs)
-        rhs = _parse_arg(rhs)
+    @_parse_args
+    def wrapper(lhs, rhs):
+        return Clause(f"({lhs[0]}) {operator} ({rhs[0]})", tuple(lhs[1] + rhs[1]))
 
-        return Clause(f"{lhs[0]} {operator} {rhs[0]}", tuple(lhs[1] + rhs[1]))
-
-    return sql_op
+    return wrapper
 
 
 def _make_fn(name):
-    def sql_fn(*args):
+    def wrapper(*args):
         return Clause(f"{name}({str(', '.join([str(a) for a in args]))})", ())
 
-    return sql_fn
+    return wrapper
 
 
 class ClauseMetaclass(type):
@@ -115,7 +118,7 @@ class ClauseMetaclass(type):
         return super(ClauseMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
 
-class Clause(_Clause, metaclass=ClauseMetaclass):
+class Clause(namedtuple("Clause", ["clause", "params"]), metaclass=ClauseMetaclass):
     def __str__(self):
         return self.clause
 
@@ -144,55 +147,49 @@ class op(metaclass=OperatorMetaclass):
         setattr(cls, name, staticmethod(func))
 
     @staticmethod
-    def or_(cond_1, cond_2):
-        return Clause(
-            f"({_strip(cond_1[0])} or {_strip(cond_2[0])})", (*cond_1[1], *cond_2[1]),
-        )
+    @_parse_args
+    def or_(lhs, rhs):
+        return Clause(f"(({_strip(lhs[0])}) or ({_strip(rhs[0])}))", (lhs[1] + rhs[1]))
 
     @staticmethod
-    def and_(cond_1, cond_2):
-        return Clause(
-            f"({_strip(cond_1[0])} and {_strip(cond_2[0])})", (*cond_1[1], *cond_2[1]),
-        )
+    @_parse_args
+    def and_(lhs, rhs):
+        return Clause(f"(({_strip(lhs[0])}) and ({_strip(rhs[0])}))", (lhs[1] + rhs[1]))
 
     @staticmethod
+    @_parse_args
     def in_(lhs, rhs):
-        if isinstance(rhs, Query):
-            return Clause(f"{lhs} in ({str(rhs)})", ())
-
-        if isinstance(rhs, list) or isinstance(rhs, tuple):
-            placeholders = ", ".join(["%s"] * len(rhs))
-            return Clause(f"{lhs} in ({placeholders})", (rhs,))
-
-        raise ClauseError("`in` rhs can only be `subquery`, `list`, or `tuple`")
+        return Clause(f"(({_strip(lhs[0])}) in ({_strip(rhs[0])}))", (lhs[1] + rhs[1]))
 
     @staticmethod
+    @_parse_args
     def like(lhs, rhs):
-        arg = f"%{rhs}%"
-        return Clause(f"{lhs} like %s", (arg,))
+        return Clause(f"({lhs[0]}) like ({rhs[0]})", (lhs[1] + rhs[1]))
 
     @staticmethod
+    @_parse_args
     def ilike(lhs, rhs):
         # Does a case insensitive `like`. Only postgres has this operator,
         # but we can hack it together for the others
-        arg = f"%{rhs}%"
-
         if psycopg2:
-            return Clause(f"{lhs} ilike %s", (arg,))
+            return Clause(f"({lhs[0]}) ilike ({rhs[0]})", (lhs[1] + rhs[1]))
 
-        return Clause(f"lower({lhs}) like lower(%s)", (arg,))
-
-    @staticmethod
-    def not_(field):
-        return Clause(f"not {field}", ())
+        return Clause(f"lower({lhs[0]}) like lower({rhs[0]})", (lhs[1] + rhs[1]))
 
     @staticmethod
-    def is_null(field):
-        return Clause(f"{field} is null", ())
+    @_parse_args
+    def not_(arg):
+        return Clause(f"not ({arg[0]})", (arg[1]))
 
     @staticmethod
-    def not_null(field):
-        return Clause(f"{field} is not null", ())
+    @_parse_args
+    def is_null(arg):
+        return Clause(f"({arg[0]}) is null", (arg[1]))
+
+    @staticmethod
+    @_parse_args
+    def not_null(arg):
+        return Clause(f"({arg[0]}) is not null", (arg[1]))
 
 
 class FunctionMetaclass(type):
