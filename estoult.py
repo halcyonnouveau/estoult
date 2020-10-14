@@ -90,11 +90,11 @@ def _strip(string):
 
 
 def _make_op(operator):
-    def sql_op(arg1, arg2):
-        arg1 = _parse_arg(arg1)
-        arg2 = _parse_arg(arg2)
+    def sql_op(lhs, rhs):
+        lhs = _parse_arg(lhs)
+        rhs = _parse_arg(rhs)
 
-        return Clause(f"{arg1[0]} {operator} {arg2[0]}", tuple(arg1[1] + arg2[1]))
+        return Clause(f"{lhs[0]} {operator} {rhs[0]}", tuple(lhs[1] + rhs[1]))
 
     return sql_op
 
@@ -137,9 +137,9 @@ class OperatorMetaclass(type):
 class op(metaclass=OperatorMetaclass):
     @classmethod
     def add_op(cls, name, op):
-        def func(arg1, arg2):
+        def func(lhs, rhs):
             fn = _make_op(op)
-            return fn(arg1, arg2)
+            return fn(lhs, rhs)
 
         setattr(cls, name, staticmethod(func))
 
@@ -156,31 +156,31 @@ class op(metaclass=OperatorMetaclass):
         )
 
     @staticmethod
-    def in_(field, value):
-        if isinstance(value, Query):
-            return Clause(f"{field} in ({str(value)})", ())
+    def in_(lhs, rhs):
+        if isinstance(rhs, Query):
+            return Clause(f"{lhs} in ({str(rhs)})", ())
 
-        if isinstance(value, list) or isinstance(value, tuple):
-            placeholders = ", ".join(["%s"] * len(value))
-            return Clause(f"{field} in ({placeholders})", (value,))
+        if isinstance(rhs, list) or isinstance(rhs, tuple):
+            placeholders = ", ".join(["%s"] * len(rhs))
+            return Clause(f"{lhs} in ({placeholders})", (rhs,))
 
-        raise ClauseError("`in` value can only be `subquery`, `list`, or `tuple`")
-
-    @staticmethod
-    def like(field, value):
-        arg = f"%{value}%"
-        return Clause(f"{field} like %s", (arg,))
+        raise ClauseError("`in` rhs can only be `subquery`, `list`, or `tuple`")
 
     @staticmethod
-    def ilike(field, value):
+    def like(lhs, rhs):
+        arg = f"%{rhs}%"
+        return Clause(f"{lhs} like %s", (arg,))
+
+    @staticmethod
+    def ilike(lhs, rhs):
         # Does a case insensitive `like`. Only postgres has this operator,
         # but we can hack it together for the others
-        arg = f"%{value}%"
+        arg = f"%{rhs}%"
 
         if psycopg2:
-            return Clause(f"{field} ilike %s", (arg,))
+            return Clause(f"{lhs} ilike %s", (arg,))
 
-        return Clause(f"lower({field}) like lower(%s)", (arg,))
+        return Clause(f"lower({lhs}) like lower(%s)", (arg,))
 
     @staticmethod
     def not_(field):
@@ -223,14 +223,14 @@ class fn(metaclass=FunctionMetaclass):
         setattr(cls, name, staticmethod(func))
 
     @staticmethod
-    def alias(arg1, arg2):
-        s, p = _parse_arg(arg1)
-        return Clause(f"{s} as {arg2}", tuple(p))
+    def alias(lhs, rhs):
+        s, p = _parse_arg(lhs)
+        return Clause(f"{s} as {rhs}", tuple(p))
 
     @staticmethod
-    def cast(arg1, arg2):
-        s, p = _parse_arg(arg1)
-        return Clause(f"cast({s} as {arg2})", tuple(p))
+    def cast(lhs, rhs):
+        s, p = _parse_arg(lhs)
+        return Clause(f"cast({s} as {rhs})", tuple(p))
 
     @staticmethod
     def wild(schema):
