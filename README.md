@@ -1,4 +1,4 @@
-![logo](/docs/la_black_luna.png)
+![la black luna](https://raw.githubusercontent.com/halcyonnouveau/estoult/master/docs/la_black_luna.png)
 
 # Estoult
 
