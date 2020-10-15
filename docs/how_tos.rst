@@ -92,9 +92,9 @@ Other operators are available as methods from the ``op`` module.:
    * - ``op.in_``
      - ``.where(op.in_(Person.id, [1, 2, 3, 4]))``
    * - ``op.like``
-     - ``.where(op.like(Person.name, "Name"))``
+     - ``.where(op.like(Person.name, "Astol%"))``
    * - ``op.ilike``
-     - ``.where(op.ilike(Person.name, "Name"))``
+     - ``.where(op.ilike(Person.name, "%StOL%"))``
    * - ``op.not``
      - ``.where(op.not_(Person.name == "Name"))``
    * - ``op.is_null``
@@ -108,7 +108,7 @@ Other operators are available as methods from the ``op`` module.:
     # name = "Ferrari" OR engine = "GP2"
     >>> query.where(op.or_(Car.name == "Ferrari", Car.engine == "GP2"))
     # name like '%Renault%'
-    >>> query.where(op.like(Car.name, "Renault"))
+    >>> query.where(op.like(Car.name, "%Renault%"))
 
 Function operators
 ------------------
