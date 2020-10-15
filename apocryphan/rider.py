@@ -6,6 +6,7 @@ A migration tool for Estoult.
 import os
 import re
 import glob
+import types
 import sys
 import argparse
 import time
@@ -17,7 +18,20 @@ import socket
 from pathlib import Path
 from collections import namedtuple
 
-__all__ = ["Rider", "step"]
+__all__ = ["MigrateError", "Rider", "RiderError", "RollbackError", "step"]
+
+
+class RiderError(Exception):
+    pass
+
+
+class MigrateError(RiderError):
+    pass
+
+
+class RollbackError(RiderError):
+    pass
+
 
 SCAFFOLD = """
 \"""
@@ -33,9 +47,8 @@ steps = [
 ]
 """.strip()
 
-
-def step(st):
-    return st
+step = namedtuple("Step", ["apply", "rollback", "ignore_errors"])
+step.__new__.__defaults__ = (None, None, None)
 
 
 def _read_migration(path):
@@ -155,7 +168,7 @@ class Rider:
         return [_read_migration(f) for f in files]
 
     def create(self, args):
-        name = args.name
+        name = args.message
 
         filename = f"{int(time.time())}-{'-'.join(name.split(' ')).lower()}.py"
         self._mig_path.mkdir(parents=True, exist_ok=True)
@@ -211,7 +224,17 @@ class Rider:
             steps = m["steps"]
 
             for step in steps:
-                self.db.sql(step, ())
+                if step.migrate is None:
+                    raise MigrateError("Migration step is empty")
+
+                try:
+                    if isinstance(step.migrate, types.functionType):
+                        step.migrate(self.db)
+                    else:
+                        self.db.sql(step.migrate, ())
+                except Exception as e:
+                    if step.ignore_errors not in ["migrate", "all"]:
+                        raise e
 
             self.db.sql(
                 "insert into %s (migration) values (%s)"
@@ -241,7 +264,7 @@ class Rider:
     def migrations(self, _args):
         migs = self._get_migrations()
 
-        Row = namedtuple("Row", ["idx", "description", "applied"])
+        Row = namedtuple("Row", ["id", "message", "applied"])
         rows = []
 
         for idx, m in enumerate(migs):
@@ -262,7 +285,12 @@ class Rider:
         _print_table(rows)
 
     def rollback(self, args):
-        pass
+        migs = self._get_migrations()
+
+        roll_to = migs[args.id:]
+
+        for roll in roll_to:
+            print(roll["id"])
 
     def parse_args(self):
         parser = argparse.ArgumentParser(description="Rider migration tool for Estoult")
@@ -271,16 +299,18 @@ class Rider:
         )
 
         create_parser = subparsers.add_parser("create", help="create a new migration")
-        create_parser.add_argument("-n", "--name", help="migration name", required=True)
+        create_parser.add_argument(
+            "-m", "--message", help="migration description message", required=True
+        )
 
         subparsers.add_parser("migrate", help="migrate a repo")
 
         subparsers.add_parser("migrations", help="show all migrations")
 
-        # rollback_parser = subparsers.add_parser(
-        #     "rollback", help="rollback to a migration"
-        # )
-        # rollback_parser.add_argument("-i" "--id", help="migration id", required=True)
+        rollback_parser = subparsers.add_parser(
+            "rollback", help="rollback to a migration"
+        )
+        rollback_parser.add_argument("-i" "--id", help="migration id", required=True)
 
         args = parser.parse_args()
 

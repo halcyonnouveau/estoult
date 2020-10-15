@@ -71,7 +71,57 @@ Create a new migration with a description.
 
 .. code-block:: bash
 
-    rider create -d "init db"
+    rider create -m "add contacts table"
+
+This will create the bellow scaffold file you can add your migration steps too.
+
+.. code-block:: bash
+
+    """
+    create table
+    """
+
+    from apocryphan.rider import step
+
+    __depends__ = {"1602721237-add-pg-extensions"}
+
+    steps = [
+        step("")
+    ]
+
+The ``step`` function takes 3 arguments:
+
+* ``migreate``: a SQL query or function to apply the migration step.
+* ``rollback``: (optional) a SQL query or function to rollback the migration step.
+* ``ignore_errors``: (optional, one of "migrate", "rollback" or "all") causes rider to ignore database errors in either migrate, rollback, or both stages.
+
+.. code-block:: bash
+
+    steps = [
+        # Steps with sql queries
+        step(
+            migrate="create table contacts (id int not null);",
+            rollback="drop table contacts;",
+            ignore_errors="all",
+        ),
+
+        # Arguments don't need to be kwargs
+        step("alter table contacts add column name varchar(256) not null")
+    ]
+
+You can supply a function to ``migrate`` or ``rolllback``. Each function takes your db object.
+
+.. code-block:: bash
+
+    def migrate_step(db):
+        db.sql(...)
+
+    def rollback_step(db):
+        db.sql(...)
+
+    steps = [
+        step(migrate_step, rollback_step),
+    ]
 
 View migrations:
 
