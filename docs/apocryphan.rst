@@ -73,7 +73,7 @@ Create a new migration with a description.
 
     rider create -m "add contacts table"
 
-This will create the bellow scaffold file you can add your migration steps too.
+This will create the bellow scaffold file in which you can add your migration steps too.
 
 .. code-block:: bash
 
