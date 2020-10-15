@@ -15,8 +15,11 @@ import ast
 import getpass
 import socket
 
+from datetime import datetime
 from pathlib import Path
 from collections import namedtuple
+
+from estoult import Query, Schema, Field
 
 __all__ = ["MigrateError", "Rider", "RiderError", "RollbackError", "step"]
 
@@ -47,7 +50,7 @@ steps = [
 ]
 """.strip()
 
-step = namedtuple("Step", ["apply", "rollback", "ignore_errors"])
+step = namedtuple("Step", ["migrate", "rollback", "ignore_errors"])
 step.__new__.__defaults__ = (None, None, None)
 
 
@@ -115,6 +118,37 @@ def _atomic(func):
     return wrapper
 
 
+class RiderLog(Schema):
+    id = Field(str, "id", null=False, primary_key=True)
+    migration = Field(str, "migration", null=False)
+    operation = Field(str, "operation", null=False)
+    username = Field(str, "username", null=False)
+    hostname = Field(str, "hostname", null=False)
+    time = Field(str, "time", null=False)
+
+    @classmethod
+    def new(cls, migration, operation):
+        return cls.insert(
+            {
+                "id": str(uuid.uuid4()),
+                "migration": migration,
+                "operation": "apply",
+                "username": getpass.getuser(),
+                "hostname": socket.gethostname(),
+                "time": datetime.now(),
+            }
+        )
+
+
+class RiderMigration(Schema):
+    migration = Field(str, "migration", null=False, primary_key=True)
+    applied_at = Field(str, "applied_at")
+
+    @classmethod
+    def new(cls, migration):
+        return cls.insert({"migration": migration, "applied_at": datetime.now()})
+
+
 class Rider:
 
     default_config = {
@@ -126,9 +160,14 @@ class Rider:
     def __init__(self, db, config={}):
         self.db = db
         self.db.autoconnect = False
-        self.config = {**Rider.default_config, **config}
 
+        self.config = {**Rider.default_config, **config}
         self._mig_path = Path(os.getcwd()) / self.config["source"]
+
+        RiderLog._database_ = db
+        RiderMigration._database_ = db
+        RiderLog.__tablename__ = self.config["log_name"]
+        RiderMigration.__tablename__ = self.config["table_name"]
 
         self.init_tables()
 
@@ -142,7 +181,7 @@ class Rider:
                 operation varchar(56) not null,
                 username varchar(128),
                 hostname varchar(128),
-                time timestamp default current_timestamp
+                time timestamp
             );
         """
             % (self.config["log_name"]),
@@ -153,7 +192,7 @@ class Rider:
             """
             create table if not exists %s (
                 migration varchar(256) primary key not null,
-                applied_at timestamp default current_timestamp
+                applied_at timestamp
             );
         """
             % (self.config["table_name"]),
@@ -174,7 +213,6 @@ class Rider:
         self._mig_path.mkdir(parents=True, exist_ok=True)
 
         path = str(self._mig_path / filename)
-
         migs = self._get_migrations()
 
         if len(migs) > 0:
@@ -188,6 +226,15 @@ class Rider:
             f.write(script)
 
         print(f"Created migration scaffold in {path}")
+
+    def _applied(self, id):
+        return (
+            Query(RiderMigration)
+            .get_or_none()
+            .where(RiderMigration.migration == id)
+            .execute()
+            or {}
+        ).get("applied_at")
 
     @_atomic
     def migrate(self, _args):
@@ -205,21 +252,14 @@ class Rider:
                 continue
 
             depends = m["__depends__"]
+            name = depends.pop()
 
-            if depends:
-                name = depends.pop()
-                depends_applied = self.db.get_or_none(
-                    "select * from %s where migration = %s"
-                    % (self.config["table_name"], "%s"),
-                    (name,),
+            if depends and self._applied(name) is None:
+                raise Exception(
+                    f"""
+                    {m['id']} depends on {name} but is not applied.
+                    """.strip()
                 )
-
-                if depends_applied is None:
-                    raise Exception(
-                        f"""
-                        {m['id']} depends on {name} but is not applied.
-                        """.strip()
-                    )
 
             steps = m["steps"]
 
@@ -228,7 +268,7 @@ class Rider:
                     raise MigrateError("Migration step is empty")
 
                 try:
-                    if isinstance(step.migrate, types.functionType):
+                    if isinstance(step.migrate, types.FunctionType):
                         step.migrate(self.db)
                     else:
                         self.db.sql(step.migrate, ())
@@ -236,27 +276,8 @@ class Rider:
                     if step.ignore_errors not in ["migrate", "all"]:
                         raise e
 
-            self.db.sql(
-                "insert into %s (migration) values (%s)"
-                % (self.config["table_name"], "%s"),
-                (m["id"],),
-            )
-
-            self.db.sql(
-                """
-                insert into %s
-                (id, migration, operation, username, hostname)
-                values (%s, %s, %s, %s, %s)
-            """
-                % (self.config["log_name"], "%s", "%s", "%s", "%s", "%s"),
-                (
-                    str(uuid.uuid4()),
-                    m["id"],
-                    "apply",
-                    getpass.getuser(),
-                    socket.gethostname(),
-                ),
-            )
+            RiderMigration.new(m["id"])
+            RiderLog.new(m["id"], "apply")
 
             print(f"Applied migration: {m['id']}")
 
@@ -264,33 +285,48 @@ class Rider:
     def migrations(self, _args):
         migs = self._get_migrations()
 
-        Row = namedtuple("Row", ["id", "message", "applied"])
+        Row = namedtuple("Row", ["index", "message", "applied"])
         rows = []
 
         for idx, m in enumerate(migs):
-            applied = (
-                self.db.get_or_none(
-                    "select applied_at as at from %s where migration = %s"
-                    % (self.config["table_name"], "%s"),
-                    (m["id"],),
-                )
-                or False
-            )
+            applied = self._applied(m["id"])
 
             if applied:
-                applied = applied["at"].strftime("%Y-%m-%d %H:%M:%S.%f")
+                applied = applied.strftime("%Y-%m-%d %H:%M:%S.%f")
 
             rows.append(Row(idx, m["doc"], str(applied)))
 
         _print_table(rows)
 
+    @_atomic
     def rollback(self, args):
         migs = self._get_migrations()
 
-        roll_to = migs[args.id:]
+        roll_to = migs[int(args.index) :]
+        roll_to.reverse()
 
         for roll in roll_to:
-            print(roll["id"])
+            if self._applied(roll["id"]) is None:
+                continue
+
+            steps = roll["steps"]
+            steps.reverse()
+
+            for step in steps:
+                if step.rollback is None:
+                    continue
+
+                try:
+                    if isinstance(step.rollback, types.functionType):
+                        step.rollback(self.db)
+                    else:
+                        self.db.sql(step.rollback, ())
+                except Exception as e:
+                    if step.ignore_errors not in ["rollback", "all"]:
+                        raise e
+
+            RiderMigration.delete({"migration": roll["id"]})
+            RiderLog.new(roll["id"], "rollback")
 
     def parse_args(self):
         parser = argparse.ArgumentParser(description="Rider migration tool for Estoult")
@@ -310,7 +346,9 @@ class Rider:
         rollback_parser = subparsers.add_parser(
             "rollback", help="rollback to a migration"
         )
-        rollback_parser.add_argument("-i" "--id", help="migration id", required=True)
+        rollback_parser.add_argument(
+            "-i", "--index", help="migration index", required=True
+        )
 
         args = parser.parse_args()
 
