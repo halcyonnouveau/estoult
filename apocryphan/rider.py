@@ -1,6 +1,95 @@
 #!/usr/bin/env python
 r"""
-A migration tool for Estoult.
+``rider`` is a simple tool to help manage database migrations using the existing 
+Estoult database object.
+
+Start by creating a ``rider.py`` file to tell ``rider`` about your database object.
+
+.. code-block:: python
+
+    from src.schemas.base import db
+
+    # Export the db
+    # Not actually needed, but my linter screams at me otherwise
+    db = db
+
+    # Default config
+    config = {
+        # Path where migrations are stored
+        "source": "./migrations",
+        # Table name for migrations
+        "table_name": "_rider_migrations",
+        # Table name of migration logs
+        "log_name": "_rider_logs",
+    }
+
+Create a new migration with a description.
+
+.. code-block:: bash
+
+    rider create -m "add contacts table"
+
+This will create the bellow scaffold file in which you can add your migration steps too.
+
+.. code-block:: bash
+
+    '''
+    create table
+    '''
+
+    from apocryphan.rider import step
+
+    __depends__ = {"1602721237-add-pg-extensions"}
+
+    steps = [
+        step("")
+    ]
+
+The ``step`` function takes 3 arguments:
+
+* ``migreate``: a SQL query or function to apply the migration step.
+* ``rollback``: (optional) a SQL query or function to rollback the migration step.
+* ``ignore_errors``: (optional, one of "migrate", "rollback" or "all") causes rider to ignore database errors in either migrate, rollback, or both stages.
+
+.. code-block:: bash
+
+    steps = [
+        # Steps with sql queries
+        step(
+            migrate="create table contacts (id int not null);",
+            rollback="drop table contacts;",
+            ignore_errors="all",
+        ),
+
+        # Arguments don't need to be kwargs
+        step("alter table contacts add column name varchar(256) not null")
+    ]
+
+You can supply a function to ``migrate`` or ``rolllback``. Each function takes your db object.
+
+.. code-block:: bash
+
+    def migrate_step(db):
+        db.sql(...)
+
+    def rollback_step(db):
+        db.sql(...)
+
+    steps = [
+        step(migrate_step, rollback_step),
+    ]
+
+View migrations:
+
+.. code-block:: bash
+
+    rider migrations
+
+Apply migrations:
+
+.. code-block:: bash
+
+    rider migrate
 """
 
 import os

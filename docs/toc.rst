@@ -9,3 +9,4 @@ Estoult
    how_tos
    apocryphan
    advanced
+   api

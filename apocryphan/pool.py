@@ -2,16 +2,40 @@ r"""
 Lightweight connection pooling. This is heavily recommended for multi-threaded
 applications (e.g webservers).
 
-In a multi-threaded application, up to `max_connections` will be opened. Each
+In a multi-threaded application, up to ``max_connections`` will be opened. Each
 thread (or, if using gevent, greenlet) will have it's own connection.
 
 In a single-threaded application, only one connection will be created. It will
 be continually recycled until either it exceeds the stale timeout or is closed
-explicitly (using `.manual_close()`).
+explicitly (using ``.manual_close()``).
 
-Note: `autoconnect` is disabled so your application needs to ensure that
-connections are opened and closed when you are finished with them, so they can be
-returned to the pool.
+.. code-block:: python
+
+    from apocryphan.pool import PooledPostgreSQLDatabase
+
+    db = PooledPostgreSQLDatabase(
+        max_connections=32,
+        stale_timeout=300,
+        user=os.getenv("POSTGRES_USER", "postgres"),
+        password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+        host=os.getenv("POSTGRES_HOST", "localhost"),
+        database=os.getenv("POSTGRES_DB", "porg"),
+    )
+
+
+.. warning::
+
+   ``autoconnect`` is disabled so your application needs to ensure that connections are opened and closed when you are finished with them, so they can be returned to the pool. With a Flask server, it could look like this:
+
+   .. code-block:: python
+
+       @app.before_request
+       def open_connection():
+           db.connect()
+
+       @app.teardown_request
+       def close_connection(exc):
+           db.close()
 """
 
 import heapq
@@ -31,6 +55,15 @@ except ImportError:
     ) = TRANSACTION_STATUS_UNKNOWN = None
 
 from estoult import MySQLDatabase, PostgreSQLDatabase, SQLiteDatabase
+
+
+__all__ = [
+    "MaxConnectionsExceeded",
+    "PooledDatabase",
+    "PooledMySQLDatabase",
+    "PooledPostgreSQLDatabase",
+    "PooledSQLiteDatabase",
+]
 
 
 def make_int(val):
