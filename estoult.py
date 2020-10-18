@@ -113,7 +113,7 @@ class ClauseMetaclass(type):
     def __new__(cls, clsname, bases, attrs):
         # Add op overloading
         for name, operator in _sql_ops.items():
-            attrs[f"__{name}__"] = _make_op(operator)
+            attrs[f"__{name}__"] = staticmethod(_make_op(operator))
 
         return super(ClauseMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
@@ -132,7 +132,7 @@ class Clause(namedtuple("Clause", ["clause", "params"]), metaclass=ClauseMetacla
 class OperatorMetaclass(type):
     def __new__(cls, clsname, bases, attrs):
         for name, operator in _sql_ops.items():
-            attrs[name] = _make_op(operator)
+            attrs[name] = staticmethod(_make_op(operator))
 
         return super(OperatorMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
@@ -205,7 +205,7 @@ class FunctionMetaclass(type):
 
     def __new__(cls, clsname, bases, attrs):
         for f in cls.sql_fns:
-            attrs[f] = _make_fn(f)
+            attrs[f] = staticmethod(_make_fn(f))
 
         return super(FunctionMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
@@ -244,6 +244,23 @@ class FieldMetaclass(type):
 
 
 class Field(metaclass=FieldMetaclass):
+    """
+    A schema field, analogous to columns on a table.
+
+    :param type: Basic datatype of the field, used to cast values into the database.
+    :type type: type
+    :param name: The column name of the field.
+    :type name: str
+    :param caster: A specified caster type/function for more extensive casting.
+    :type caster: type, function, optional
+    :param null: Field allows nulls.
+    :type null: bool, optional
+    :param default: Default value.
+    :type default: optional
+    :param primary_key: Field is the primary key.
+    :type primary_key: bool, optional
+    """
+
     def __init__(self, type, name, **kwargs):
         self.type = type
         self.name = name
@@ -371,7 +388,7 @@ class Schema(metaclass=SchemaMetaclass):
         return changeset
 
     @classmethod
-    def casval(cls, row, updating):
+    def _casval(cls, row, updating):
         changeset = cls._cast(updating, row)
         changeset = cls._validate(updating, changeset)
 
@@ -383,7 +400,7 @@ class Schema(metaclass=SchemaMetaclass):
 
     @classmethod
     def insert(cls, obj):
-        changeset = cls.casval(obj, updating=False)
+        changeset = cls._casval(obj, updating=False)
 
         params = list(changeset.values())
         fields = ", ".join(changeset.keys())
@@ -403,7 +420,7 @@ class Schema(metaclass=SchemaMetaclass):
     def update(cls, old, new):
         # This updates a single row only, if you want to update several
         # use `update` in `Query`
-        changeset = cls.casval({**old, **new}, updating=True)
+        changeset = cls._casval({**old, **new}, updating=True)
         sql = f"update {cls.__tablename__} set "
         params = []
 
@@ -515,7 +532,7 @@ class Query(metaclass=QueryMetaclass):
     def update(self, changeset):
         self._method = "sql"
 
-        changeset = self.schema.casval(changeset, updating=True)
+        changeset = self.schema._casval(changeset, updating=True)
 
         query = ""
         params = []
@@ -583,7 +600,7 @@ class Query(metaclass=QueryMetaclass):
             v = None
 
             if isinstance(a, dict):
-                k, v = a.items()[0]
+                k, v = next(iter(a.items()))
 
                 if v != "asc" and v != "desc":
                     raise QueryError("Value must be 'asc' or 'desc'")
@@ -596,12 +613,12 @@ class Query(metaclass=QueryMetaclass):
                 params.extend(p)
             else:
                 query += "%s "
-                params.append(str(v))
+                params.append(str(k))
 
             if v:
                 query += f"{v}, "
 
-        self._add_node(f"order by {query}", params)
+        self._add_node(f"{query}", params)
 
         return self
 
