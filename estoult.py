@@ -583,7 +583,7 @@ class Query(metaclass=QueryMetaclass):
             v = None
 
             if isinstance(a, dict):
-                k, v = a.items()[0]
+                k, v = next(iter(a.items()))
 
                 if v != "asc" and v != "desc":
                     raise QueryError("Value must be 'asc' or 'desc'")
@@ -596,12 +596,12 @@ class Query(metaclass=QueryMetaclass):
                 params.extend(p)
             else:
                 query += "%s "
-                params.append(str(v))
+                params.append(str(k))
 
             if v:
                 query += f"{v}, "
 
-        self._add_node(f"order by {query}", params)
+        self._add_node(f"{query}", params)
 
         return self
 
