@@ -140,6 +140,14 @@ class OperatorMetaclass(type):
 class op(metaclass=OperatorMetaclass):
     @classmethod
     def add_op(cls, name, op):
+        """
+        Adds an operator to the module.
+
+        :param name: What the name of the function should be called.
+        :type name: str
+        :param op: The SQL operator it is turned into.
+        :type op: str
+        """
         def func(lhs, rhs):
             fn = _make_op(op)
             return fn(lhs, rhs)
@@ -213,6 +221,14 @@ class FunctionMetaclass(type):
 class fn(metaclass=FunctionMetaclass):
     @classmethod
     def add_fn(cls, name, sql_fn):
+        """
+        Adds an additional function to the module.
+
+        :param name: What the name of the function should be called.
+        :type name: str
+        :param sql_fn: The SQL function it is turned into.
+        :type sql_fn: str
+        """
         def func(*args):
             fn = _make_fn(sql_fn)
             return fn(*args)
@@ -221,16 +237,28 @@ class fn(metaclass=FunctionMetaclass):
 
     @staticmethod
     def alias(lhs, rhs):
+        """
+        Alias ``lhs`` to ``rhs``.
+        """
         s, p = _parse_arg(lhs)
         return Clause(f"{s} as {rhs}", tuple(p))
 
     @staticmethod
     def cast(lhs, rhs):
+        """
+        Cast ``lhs`` to ``rhs``.
+        """
         s, p = _parse_arg(lhs)
         return Clause(f"cast({s} as {rhs})", tuple(p))
 
     @staticmethod
     def wild(schema):
+        """
+        Select a schema with wildcard.
+
+        :oaram schema: The schma.
+        :type schema: Schema
+        """
         return Clause(f"{schema.__tablename__}.*", ())
 
 
