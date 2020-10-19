@@ -25,7 +25,9 @@ explicitly (using ``.manual_close()``).
 
 .. warning::
 
-   ``autoconnect`` is disabled so your application needs to ensure that connections are opened and closed when you are finished with them, so they can be returned to the pool. With a Flask server, it could look like this:
+   ``autoconnect`` is disabled so your application needs to ensure that connections are
+   opened and closed when you are finished with them, so they can be returned to the
+   pool. With a Flask server, it could look like this:
 
    .. code-block:: python
 

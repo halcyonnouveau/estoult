@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 r"""
-``rider`` is a simple tool to help manage database migrations using the existing 
+``rider`` is a simple tool to help manage database migrations using the existing
 Estoult database object.
 
 Start by creating a ``rider.py`` file to tell ``rider`` about your database object.
@@ -49,7 +49,8 @@ The ``step`` function takes 3 arguments:
 
 * ``migreate``: a SQL query or function to apply the migration step.
 * ``rollback``: (optional) a SQL query or function to rollback the migration step.
-* ``ignore_errors``: (optional, one of "migrate", "rollback" or "all") causes rider to ignore database errors in either migrate, rollback, or both stages.
+* ``ignore_errors``: (optional, one of "migrate", "rollback" or "all") causes rider to
+    ignore database errors in either migrate, rollback, or both stages.
 
 .. code-block:: bash
 
@@ -65,7 +66,8 @@ The ``step`` function takes 3 arguments:
         step("alter table contacts add column name varchar(256) not null")
     ]
 
-You can supply a function to ``migrate`` or ``rolllback``. Each function takes your db object.
+You can supply a function to ``migrate`` or ``rolllback``. Each function takes your db
+object.
 
 .. code-block:: bash
 
@@ -110,7 +112,7 @@ from collections import namedtuple
 
 from estoult import Query, Schema, Field
 
-__all__ = ["MigrateError", "Rider", "RiderError", "RollbackError", "step"]
+__all__ = ["Rider", "step"]
 
 
 class RiderError(Exception):
