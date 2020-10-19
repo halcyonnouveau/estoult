@@ -256,7 +256,7 @@ class fn(metaclass=FunctionMetaclass):
         """
         Select a schema with wildcard.
 
-        :oaram schema: The schma.
+        :param schema: The schma.
         :type schema: Schema
         """
         return Clause(f"{schema.__tablename__}.*", ())
