@@ -28,6 +28,24 @@ pip install estoult
 
 Check the [documentation](https://estoult.readthedocs.io/en/latest/) for help.
 
+## Contributing
+
+If you have found a bug or would like to see some feature added to Estoult, you are most welcome to submit an issue or a pull request! Likewise if you found something in this documentation not clear or imprecise.
+
+## Tests
+
+Tests are run with [pytest](https://docs.pytest.org/en/stable/). Install it using pip:
+
+```
+pip install pytest
+```
+
+Run tests from the shell:
+
+```
+pytest
+```
+
 ## License
 
 Estoult is licensed under the MIT license (see [LICENSE file](/LICENSE)).
