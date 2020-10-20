@@ -712,7 +712,7 @@ class Database:
         return self._close()
 
     def _new_cursor(self):
-        self._cursor = self.conn.cursor()
+        self._cursor = self.conn().cursor()
 
     @property
     def cursor(self):
