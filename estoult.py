@@ -429,13 +429,13 @@ class Schema(metaclass=SchemaMetaclass):
         fields = ", ".join(changeset.keys())
         placeholders = ", ".join(["%s"] * len(changeset))
 
-        sql = f"insert into {cls.__tablename__} (%s) values (%s)\n" % (
+        sql = f"insert into {cls.__tablename__} (%s) values (%s)" % (
             fields,
             placeholders,
         )
 
         if psycopg2 is not None:
-            sql += f"returning {cls.pk.name}\n"
+            sql += f" returning {cls.pk.name}"
 
         return cls._database_.insert(_strip(sql), params)
 
