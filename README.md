@@ -30,7 +30,7 @@ Check the [documentation](https://estoult.readthedocs.io/en/latest/) for help.
 
 ## Contributing
 
-If you have found a bug or would like to see some feature added to Estoult, you are most welcome to submit an issue or a pull request! Likewise if you found something in this documentation not clear or imprecise.
+If you have found a bug or would like to see a feature added to Estoult, please submit an issue or a pull request! Likewise if you found something in the documentation not clear or imprecise.
 
 ## Tests
 
