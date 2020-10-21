@@ -1,4 +1,5 @@
-import sys, io
+import sys
+import io
 
 from copy import deepcopy
 from collections import namedtuple
@@ -257,10 +258,11 @@ class Field(metaclass=FieldMetaclass):
 
     :param type: Basic datatype of the field, used to cast values into the database.
     :type type: type
-    :param name: The column name of the field.
-    :type name: str
+    :param name: The column name of the field, will default to the variable name of the
+                 field.
+    :type name: str, optional
     :param caster: A specified caster type/function for more extensive casting.
-    :type caster: type, function, optional
+    :type caster: callable, optional
     :param null: Field allows nulls.
     :type null: bool, optional
     :param default: Default value.
@@ -269,15 +271,16 @@ class Field(metaclass=FieldMetaclass):
     :type primary_key: bool, optional
     """
 
-    def __init__(self, type, name, **kwargs):
+    def __init__(
+        self, type, name=None, caster=None, null=False, default=None, primary_key=False
+    ):
         self.type = type
         self.name = name
 
-        self.caster = kwargs.get("caster")
-
-        self.null = kwargs.get("null", True)
-        self.default = kwargs.get("default")
-        self.primary_key = kwargs.get("primary_key") is True
+        self.caster = caster
+        self.null = null
+        self.default = default
+        self.primary_key = primary_key
 
     @property
     def full_name(self):
@@ -289,8 +292,10 @@ class Field(metaclass=FieldMetaclass):
     def __hash__(self):
         return hash(str(self))
 
-    def __eq__(self, comp):
-        return str(self) == comp
+    def __repr__(self):
+        return f'<Field {self.type} name={self.name} caster={self.caster} ' \
+               f'null={self.null} default={self.default} ' \
+               f'primary_key={self.primary_key}>'
 
 
 class SchemaMetaclass(type):
@@ -307,12 +312,16 @@ class SchemaMetaclass(type):
 
         c = super(SchemaMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
-        # Add schema to fields
         for key in dir(c):
             f = getattr(c, key)
 
             if isinstance(f, Field):
+                # Reference schema in fields
                 f.schema = c
+
+                # Set name to var reference
+                if f.name is None:
+                    f.name = key
 
         return c
 
