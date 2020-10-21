@@ -1,3 +1,5 @@
+import sys, io
+
 from copy import deepcopy
 from collections import namedtuple
 from contextlib import contextmanager
@@ -150,6 +152,7 @@ class op(metaclass=OperatorMetaclass):
         :param op: The SQL operator it is turned into.
         :type op: str
         """
+
         def func(lhs, rhs):
             fn = _make_op(op)
             return fn(lhs, rhs)
@@ -211,6 +214,7 @@ class fn(metaclass=FunctionMetaclass):
         :param sql_fn: The SQL function it is turned into.
         :type sql_fn: str
         """
+
         def func(*args):
             fn = _make_fn(sql_fn)
             return fn(*args)
@@ -586,7 +590,7 @@ class Query(metaclass=QueryMetaclass):
     def limit(self, *args):
         # Example: .limit(1) or limit(1, 2)
         if len(args) == 1:
-            self._add_node("limit %s", (args,))
+            self._add_node("limit %s", args)
         elif len(args) == 2:
             # `offset` works in mysql and postgres
             self._add_node("limit %s offset %s", args)
@@ -634,7 +638,11 @@ class Query(metaclass=QueryMetaclass):
         return deepcopy(self)
 
     def __str__(self):
-        return self.schema._database_.mogrify(self._query, self._params).decode("utf-8")
+        return (
+            self.schema._database_.mogrify(self._query, self._params)
+            .decode("utf-8")
+            .strip()
+        )
 
     def __repr__(self):
         return f'<Query query="{self._query}" params={self._params}>'
@@ -733,12 +741,6 @@ class Database:
         return self._execute(query, params)
 
     @_get_connection
-    def mogrify(self, query, params):
-        with self.atomic(commit=False):
-            self._execute(query, params)
-            return self.cursor._executed
-
-    @_get_connection
     def select(self, query, params):
         self._execute(query, params)
         cols = [col[0] for col in self.cursor.description]
@@ -773,6 +775,12 @@ class MySQLDatabase(Database):
     def _connect(self):
         return mysql.connect(*self.cargs, **self.ckwargs)
 
+    @_get_connection
+    def mogrify(self, query, params):
+        with self.atomic(commit=False):
+            self._execute(query, params)
+            return self.cursor._executed
+
 
 class PostgreSQLDatabase(Database):
     def __init__(self, *args, **kwargs):
@@ -796,3 +804,23 @@ class SQLiteDatabase(Database):
 
     def _connect(self):
         return sqlite3.connect(*self.cargs, **self.ckwargs)
+
+    @_get_connection
+    def mogrify(self, query, params):
+        with self.atomic(commit=False):
+            # SQLite doesn't have a thing to return the executed statement.
+            # But we **can** print it! So just capture that! :) FML
+
+            # redirect sys.stdout to a buffer
+            self.conn.set_trace_callback(print)
+            stdout = sys.stdout
+            sys.stdout = io.StringIO()
+
+            self._execute(query, params)
+
+            # get output and restore sys.stdout
+            output = sys.stdout.getvalue()
+            sys.stdout = stdout
+            self.conn.set_trace_callback(None)
+
+            return output.encode("utf-8")
