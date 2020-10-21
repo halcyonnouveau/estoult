@@ -242,7 +242,7 @@ class RiderMigration(Schema):
 
 class Rider:
 
-    default_config = {
+    config = {
         "source": "./migrations",
         "table_name": "_rider_migrations",
         "log_name": "_rider_logs",
@@ -252,7 +252,7 @@ class Rider:
         self.db = db
         self.db.autoconnect = False
 
-        self.config = {**Rider.default_config, **config}
+        self.config = {**Rider.config, **config}
         self._mig_path = Path(os.getcwd()) / self.config["source"]
 
         RiderLog._database_ = db
