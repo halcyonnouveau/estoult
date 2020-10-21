@@ -129,7 +129,14 @@ class OperatorMetaclass(type):
         for name, operator in _sql_ops.items():
             attrs[name] = staticmethod(_make_op(operator))
 
-        return super(OperatorMetaclass, cls).__new__(cls, clsname, bases, attrs)
+        c = super(OperatorMetaclass, cls).__new__(cls, clsname, bases, attrs)
+
+        c.add_op("or_", "or")
+        c.add_op("and_", "and")
+        c.add_op("in_", "in")
+        c.add_op("like", "like")
+
+        return c
 
 
 class op(metaclass=OperatorMetaclass):
@@ -148,26 +155,6 @@ class op(metaclass=OperatorMetaclass):
             return fn(lhs, rhs)
 
         setattr(cls, name, staticmethod(func))
-
-    @staticmethod
-    @_parse_args
-    def or_(lhs, rhs):
-        return Clause(f"(({_strip(lhs[0])}) or ({_strip(rhs[0])}))", (lhs[1] + rhs[1]))
-
-    @staticmethod
-    @_parse_args
-    def and_(lhs, rhs):
-        return Clause(f"(({_strip(lhs[0])}) and ({_strip(rhs[0])}))", (lhs[1] + rhs[1]))
-
-    @staticmethod
-    @_parse_args
-    def in_(lhs, rhs):
-        return Clause(f"(({_strip(lhs[0])}) in ({_strip(rhs[0])}))", (lhs[1] + rhs[1]))
-
-    @staticmethod
-    @_parse_args
-    def like(lhs, rhs):
-        return Clause(f"({lhs[0]}) like ({rhs[0]})", (lhs[1] + rhs[1]))
 
     @staticmethod
     @_parse_args
@@ -232,17 +219,11 @@ class fn(metaclass=FunctionMetaclass):
 
     @staticmethod
     def alias(lhs, rhs):
-        """
-        Alias ``lhs`` to ``rhs``.
-        """
         s, p = _parse_arg(lhs)
         return Clause(f"{s} as {rhs}", tuple(p))
 
     @staticmethod
     def cast(lhs, rhs):
-        """
-        Cast ``lhs`` to ``rhs``.
-        """
         s, p = _parse_arg(lhs)
         return Clause(f"cast({s} as {rhs})", tuple(p))
 
