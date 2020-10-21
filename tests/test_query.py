@@ -1,27 +1,25 @@
 from estoult import Query
-from .base import User, Organisation
+from .base import assertSQL, User, Organisation
 
 
 def test_query():
-    results = Query(User).select().execute()
-    assert isinstance(results, list)
+    s = "select * from users"
+    q = Query(User).select()
+    assertSQL(q, s)
 
 
 def test_left_join():
-    results = (
+    s = "select * from users left join organisations " \
+        "on users.organisation_id = organisations.id"
+    q = (
         Query(User)
         .select()
-        .left_join(Organisation, on=[User.organistaion_id, Organisation.id])
-        .execute()
+        .left_join(Organisation, on=[User.organisation_id, Organisation.id])
     )
-    assert isinstance(results, list)
+    assertSQL(q, s)
 
 
 def test_order_by():
-    results = (
-        Query(User)
-        .select()
-        .order_by({User.name: "desc"}, User.id)
-        .execute()
-    )
-    assert isinstance(results, list)
+    s = "select * from users order by 'users.name' desc, 'users.id' limit 10 offset 2"
+    q = Query(User).select().order_by({User.name: "desc"}, User.id).limit(10, 2)
+    assertSQL(q, s)

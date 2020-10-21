@@ -1,4 +1,5 @@
 import os
+from hashlib import md5
 
 from apocryphan.pool import PooledSQLiteDatabase
 from estoult import Field, Query
@@ -13,13 +14,13 @@ class User(db.Schema):
     __tablename__ = "users"
 
     id = Field(int, "id", null=False)
-    organistaion_id = Field(int, "organistaion_id", null=True)
+    organisation_id = Field(int, "organisation_id", null=True)
 
     name = Field(str, "name", null=False)
 
     @classmethod
     def new(cls, org_id, name):
-        return cls.insert({cls.organistaion_id: org_id, cls.name: name})
+        return cls.insert({cls.organisation_id: org_id, cls.name: name})
 
     @classmethod
     def get_by_name(cls, name):
@@ -41,7 +42,7 @@ def db_create():
         """
         create table if not exists users (
             id integer primary key autoincrement not null,
-            organistaion_id integer null,
+            organisation_id integer null,
             name varchar(256) not null
         );
     """,
@@ -64,3 +65,10 @@ def db_create():
 def db_clean():
     if os.path.exists(_sql_file):
         os.unlink(_sql_file)
+
+
+def assertSQL(query, sql):
+    # String comparisons are stupid
+    q = md5(str(query).encode("utf-8")).hexdigest()
+    s = md5(sql.encode("utf-8")).hexdigest()
+    assert q == s
