@@ -317,12 +317,6 @@ class QF(Field):
     def full_name(self):
         return f"`{self.name}`"
 
-    def __str__(self):
-        return self.full_name
-
-    def __hash__(self):
-        return hash(str(self))
-
     def __repr__(self):
         return f"<QF name={self.name}>"
 
