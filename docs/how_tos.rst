@@ -33,7 +33,7 @@ You can ``print`` any unexecuted ``Query`` to display the generated SQL.
     >>> print(Query(Animal).select().where(Animal.name == "Red Panda"))
     select * from animals where animals.name = "Red Panda"
 
-To format the query parameters, Estoult uses the ``mogrify`` function for PostgreSQL and just runs it for the other sources. This means it will fail if there is a syntax error in the SQL. To see it unformatted use ``repr`` instead of ``print``.
+To format the query parameters, Estoult uses the ``mogrify`` function for PostgreSQL and just runs it for the other sources. This means it will fail if there is a syntax error in the SQL. To see it unformatted you will need to use ``repr`` as well.
 
 Validation
 ----------
