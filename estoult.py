@@ -28,6 +28,7 @@ __all__ = [
     "fn",
     "op",
     "Schema",
+    "QF",
     "Query",
 ]
 
@@ -298,6 +299,32 @@ class Field(metaclass=FieldMetaclass):
             f"null={self.null} default={self.default} "
             f"primary_key={self.primary_key}>"
         )
+
+
+class QF(Field):
+    """
+    An extra user defined field used for queries.
+    This is mainly needed for referencing aliases.
+
+    :param name: The name of the field.
+    :type name: str
+    """
+
+    def __init__(self, name):
+        self.name = name
+
+    @property
+    def full_name(self):
+        return f"`{self.name}`"
+
+    def __str__(self):
+        return self.full_name
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __repr__(self):
+        return f"<QF name={self.name}>"
 
 
 class SchemaMetaclass(type):
