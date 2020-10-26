@@ -44,16 +44,16 @@ The schema is a representation of data from our database. We create schemas by i
     class Author(db.Schema):
         __tablename__ = "authors"
 
-        id = Field(int, "id")
-        first_name = Field(str, "first_name")
-        last_name = Field(str, "last_name")
+        id = Field(int)
+        first_name = Field(str)
+        last_name = Field(str)
 
     class Book(db.Schema):
         __tablename__ = "books"
 
-        id = Field(int, "id")
-        name = Field(str, "name")
-        author_id = Field(int, "author_id")
+        id = Field(int)
+        name = Field(str)
+        author_id = Field(int)
 
 This defines the schema from the database that this schema maps to. In this case, we're saying that the ``Author`` schema maps to the ``authors`` table in the database, and the ``id``, ``first_name`` and ``last_name`` are fields in that table.
 

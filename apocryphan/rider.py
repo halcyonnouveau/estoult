@@ -210,12 +210,12 @@ def _atomic(func):
 
 
 class RiderLog(Schema):
-    id = Field(str, "id", null=False, primary_key=True)
-    migration = Field(str, "migration", null=False)
-    operation = Field(str, "operation", null=False)
-    username = Field(str, "username", null=False)
-    hostname = Field(str, "hostname", null=False)
-    time = Field(str, "time", null=False)
+    id = Field(str, null=False, primary_key=True)
+    migration = Field(str, null=False)
+    operation = Field(str, null=False)
+    username = Field(str, null=False)
+    hostname = Field(str, null=False)
+    time = Field(str, null=False)
 
     @classmethod
     def new(cls, migration, operation):
@@ -232,8 +232,8 @@ class RiderLog(Schema):
 
 
 class RiderMigration(Schema):
-    migration = Field(str, "migration", null=False, primary_key=True)
-    applied_at = Field(str, "applied_at")
+    migration = Field(str, null=False, primary_key=True)
+    applied_at = Field(str)
 
     @classmethod
     def new(cls, migration):

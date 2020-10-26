@@ -13,10 +13,10 @@ class User(db.Schema):
 
     __tablename__ = "users"
 
-    id = Field(int, "id", null=False)
-    organisation_id = Field(int, "organisation_id", null=True)
+    id = Field(int, null=False)
+    organisation_id = Field(int, null=True)
 
-    name = Field(str, "name", null=False, default="default name")
+    name = Field(str, null=False, default="default name")
 
     @classmethod
     def new(cls, org_id=None, name=None):
@@ -31,8 +31,8 @@ class Organisation(db.Schema):
 
     __tablename__ = "organisations"
 
-    id = Field(int, "id", null=False)
-    name = Field(str, "name", null=False)
+    id = Field(int, null=False)
+    name = Field(str, null=False)
 
 
 def db_create():
