@@ -16,10 +16,10 @@ class User(db.Schema):
     id = Field(int, "id", null=False)
     organisation_id = Field(int, "organisation_id", null=True)
 
-    name = Field(str, "name", null=False)
+    name = Field(str, "name", null=False, default="default name")
 
     @classmethod
-    def new(cls, org_id, name):
+    def new(cls, org_id=None, name=None):
         return cls.insert({cls.organisation_id: org_id, cls.name: name})
 
     @classmethod

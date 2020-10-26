@@ -9,8 +9,10 @@ def test_query():
 
 
 def test_left_join():
-    s = "select * from users left join organisations " \
+    s = (
+        "select * from users left join organisations "
         "on users.organisation_id = organisations.id"
+    )
     q = (
         Query(User)
         .select()

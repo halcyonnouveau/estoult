@@ -272,7 +272,7 @@ class Field(metaclass=FieldMetaclass):
     """
 
     def __init__(
-        self, type, name=None, caster=None, null=False, default=None, primary_key=False
+        self, type, name=None, caster=None, null=True, default=None, primary_key=False
     ):
         self.type = type
         self.name = name
@@ -293,9 +293,11 @@ class Field(metaclass=FieldMetaclass):
         return hash(str(self))
 
     def __repr__(self):
-        return f'<Field {self.type} name={self.name} caster={self.caster} ' \
-               f'null={self.null} default={self.default} ' \
-               f'primary_key={self.primary_key}>'
+        return (
+            f"<Field {self.type} name={self.name} caster={self.caster} "
+            f"null={self.null} default={self.default} "
+            f"primary_key={self.primary_key}>"
+        )
 
 
 class SchemaMetaclass(type):
@@ -369,15 +371,22 @@ class Schema(metaclass=SchemaMetaclass):
         for field in cls.fields:
             value = None
 
-            if field.default is not None:
-                value = field.default
-
             try:
+                # Try to get the value from the row
+                # In a try/catch so we can tell the difference between
+                # >>> row["field"] == None  # Field is set to `None`
+                # >>> row.get("field") == None  # Field is not set
                 value = row[field.name]
             except KeyError:
-                if updating is True or field.name == cls.pk.name:
+                # We didn't pass this field in, so move on if we're updating
+                if updating is True:
                     continue
 
+            # Apply a default if we are inserting
+            if value is None and updating is False and field.default is not None:
+                value = field.default
+
+            # Cast the value
             if value is not None:
                 value = (
                     field.type(value) if field.caster is None else field.caster(value)

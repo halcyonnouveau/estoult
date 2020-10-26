@@ -6,22 +6,25 @@ _query = Query(User).select(User.id)
 
 
 def test_or():
-    s = "select users.id from users " \
+    s = (
+        "select users.id from users "
         "where ((users.name) = ('Astolfo')) or ((users.id) = (1))"
+    )
     q = _query.copy().where(op.or_(User.name == "Astolfo", User.id == 1))
     assertSQL(q, s)
 
 
 def test_and():
-    s = "select users.id from users " \
+    s = (
+        "select users.id from users "
         "where ((users.name) = ('Astolfo')) and ((users.id) = (1))"
+    )
     q = _query.copy().where(op.and_(User.name == "Astolfo", User.id == 1))
     assertSQL(q, s)
 
 
 def test_in():
-    s = "select users.id from users where " \
-        "(users.id) in (select users.id from users)"
+    s = "select users.id from users where " "(users.id) in (select users.id from users)"
     q = _query.copy().where(op.in_(User.id, _query))
     assertSQL(q, s)
 
