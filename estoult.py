@@ -240,7 +240,7 @@ class fn(metaclass=FunctionMetaclass):
         :param schema: The schema.
         :type schema: Schema
         """
-        return Clause(f"{schema.__tablename__}.*", ())
+        return Clause(f"`{schema.__tablename__}`.*", ())
 
 
 class FieldMetaclass(type):
@@ -284,7 +284,7 @@ class Field(metaclass=FieldMetaclass):
 
     @property
     def full_name(self):
-        return f"{self.schema.__tablename__}.{self.name}"
+        return f"`{self.schema.__tablename__}`.`{self.name}`"
 
     def __str__(self):
         return self.full_name
@@ -432,7 +432,7 @@ class Schema(metaclass=SchemaMetaclass):
         fields = ", ".join(changeset.keys())
         placeholders = ", ".join(["%s"] * len(changeset))
 
-        sql = f"insert into {cls.__tablename__} (%s) values (%s)" % (
+        sql = f"insert into `{cls.__tablename__}` (%s) values (%s)" % (
             fields,
             placeholders,
         )
@@ -447,7 +447,7 @@ class Schema(metaclass=SchemaMetaclass):
         # This updates a single row only, if you want to update several
         # use `update` in `Query`
         changeset = cls._casval({**old, **new}, updating=True)
-        sql = f"update {cls.__tablename__} set "
+        sql = f"update `{cls.__tablename__}` set "
         params = []
 
         for key, value in changeset.items():
@@ -469,7 +469,7 @@ class Schema(metaclass=SchemaMetaclass):
     @classmethod
     def delete(cls, row):
         # Deletes single row - look at `Query` for batch
-        sql = f"delete from {cls.__tablename__} where "
+        sql = f"delete from `{cls.__tablename__}` where "
         params = []
 
         for key, value in row.items():
@@ -499,7 +499,7 @@ class QueryMetaclass(type):
     def make_join_fn(join_type):
         def join_fn(self, schema, on):
             q = f"{str(on[0])} = {str(on[1])}"
-            self._add_node(f"{join_type} {schema.__tablename__} on {q}", ())
+            self._add_node(f"{join_type} `{schema.__tablename__}` on {q}", ())
             return self
 
         return join_fn
@@ -550,7 +550,7 @@ class Query(metaclass=QueryMetaclass):
                     query += f"{arg}, "
 
         self._add_node(
-            f"select {_strip(query)} from {self.schema.__tablename__}", params
+            f"select {_strip(query)} from `{self.schema.__tablename__}`", params
         )
 
         return self
@@ -567,13 +567,13 @@ class Query(metaclass=QueryMetaclass):
             query += f"{key} = %s, "
             params.append(value)
 
-        self._add_node(f"update {self.schema.__tablename__} set {query}", params)
+        self._add_node(f"update `{self.schema.__tablename__}` set {query}", params)
 
         return self
 
     def delete(self):
         self._method = "sql"
-        self._add_node(f"delete from {self.schema.__tablename__}", ())
+        self._add_node(f"delete from `{self.schema.__tablename__}`", ())
         return self
 
     def get(self, *args):
@@ -637,6 +637,8 @@ class Query(metaclass=QueryMetaclass):
                 c, p = _parse_arg(k)
                 query += "%s " % c
                 params.extend(p)
+            elif isinstance(k, Field):
+                query += f"{k} "
             else:
                 query += "%s "
                 params.append(str(k))
