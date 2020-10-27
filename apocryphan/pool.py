@@ -60,7 +60,6 @@ from estoult import MySQLDatabase, PostgreSQLDatabase, SQLiteDatabase
 
 
 __all__ = [
-    "MaxConnectionsExceeded",
     "PooledDatabase",
     "PooledMySQLDatabase",
     "PooledPostgreSQLDatabase",
@@ -128,7 +127,7 @@ class PooledDatabase(object):
                 return ret
 
         raise MaxConnectionsExceeded(
-            "Max connections exceeded, timed out " "attempting to connect."
+            "Max connections exceeded, timed out attempting to connect."
         )
 
     def _connect(self):
