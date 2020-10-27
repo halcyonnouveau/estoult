@@ -223,7 +223,7 @@ class RiderLog(Schema):
             {
                 "id": str(uuid.uuid4()),
                 "migration": migration,
-                "operation": "apply",
+                "operation": operation,
                 "username": getpass.getuser(),
                 "hostname": socket.gethostname(),
                 "time": datetime.now(),
