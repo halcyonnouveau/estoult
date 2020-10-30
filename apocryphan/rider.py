@@ -50,7 +50,7 @@ The ``step`` function takes 3 arguments:
 * ``migrate``: a SQL query or function to apply the migration step.
 * ``rollback``: (optional) a SQL query or function to rollback the migration step.
 * ``ignore_errors``: (optional, one of "migrate", "rollback" or "all") causes rider to
-    ignore database errors in either migrate, rollback, or both stages.
+ignore database errors in either migrate, rollback, or both stages.
 
 .. code-block:: bash
 
