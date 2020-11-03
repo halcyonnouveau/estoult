@@ -290,7 +290,7 @@ class Rider:
             (),
         )
 
-    def _get_migrations(self):
+    def get_migrations(self):
         pattern = r".+\d+-.+\.py"
         globs = sorted(glob.glob(str(self._mig_path) + "/*"))
         files = filter(re.compile(pattern).match, globs)
@@ -304,7 +304,7 @@ class Rider:
         self._mig_path.mkdir(parents=True, exist_ok=True)
 
         path = str(self._mig_path / filename)
-        migs = self._get_migrations()
+        migs = self.get_migrations()
 
         if len(migs) > 0:
             last_migration = migs[-1]["id"]
@@ -318,7 +318,7 @@ class Rider:
 
         print(f"Created migration scaffold in {path}")
 
-    def _applied(self, id):
+    def applied(self, id):
         return (
             Query(RiderMigration)
             .get_or_none()
@@ -328,8 +328,8 @@ class Rider:
         ).get("applied_at")
 
     @_atomic
-    def migrate(self, _args):
-        migs = self._get_migrations()
+    def migrate(self, _):
+        migs = self.get_migrations()
 
         applied = [
             s["migration"]
@@ -347,7 +347,7 @@ class Rider:
             if depends:
                 name = depends.pop()
 
-                if self._applied(name) is None:
+                if self.applied(name) is None:
                     raise Exception(
                         f"""
                         {m['id']} depends on {name} but is not applied.
@@ -375,14 +375,14 @@ class Rider:
             print(f"Applied migration: {m['id']}")
 
     @_atomic
-    def migrations(self, _args):
-        migs = self._get_migrations()
+    def migrations(self, _):
+        migs = self.get_migrations()
 
         Row = namedtuple("Row", ["index", "message", "applied"])
         rows = []
 
         for idx, m in enumerate(migs):
-            applied = self._applied(m["id"])
+            applied = self.applied(m["id"])
 
             if applied:
                 applied = applied.strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -393,13 +393,18 @@ class Rider:
 
     @_atomic
     def rollback(self, args):
-        migs = self._get_migrations()
+        migs = self.get_migrations()
 
-        roll_to = migs[int(args.index) :]
+        try:
+            index = args.index
+        except Exception:
+            index = args
+
+        roll_to = migs[int(index) :]
         roll_to.reverse()
 
         for roll in roll_to:
-            if self._applied(roll["id"]) is None:
+            if self.applied(roll["id"]) is None:
                 continue
 
             steps = roll["steps"]
