@@ -21,7 +21,7 @@ except ImportError:
     mysql = None
 
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 __all__ = [
     "Database",
     "Field",
@@ -399,8 +399,10 @@ class Schema(metaclass=SchemaMetaclass):
                 # >>> row.get("field") == None  # Field is not set
                 value = row[field.name]
             except KeyError:
-                # We didn't pass this field in, so move on if we're updating
                 if updating is True:
+                    continue
+
+                if field.default is None:
                     continue
 
             # Apply a default if we are inserting
