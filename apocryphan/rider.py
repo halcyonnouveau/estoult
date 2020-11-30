@@ -347,9 +347,9 @@ class Rider:
             name = depends.pop()
 
             if name and self.applied(name) is None:
-                raise Exception(
+                raise MigrateError(
                     f"""
-                    {m['id']} depends on {name} but is not applied.
+                    {m['id']} depends on {name} but it is not applied.
                     """.strip()
                 )
 
