@@ -757,9 +757,7 @@ class Query(metaclass=QueryMetaclass):
         for association, row in product(
             self._preloads, data if isinstance(data, list) else [data]
         ):
-            key, new_row = _do_preload(
-                self.schema._database_, association, row
-            )
+            key, new_row = _do_preload(self.schema._database_, association, row)
             row[key] = new_row
 
         return data
@@ -796,7 +794,7 @@ def _get_connection(func):
 
         f = func(self, *args, **kwargs)
 
-        if self.autoconnect is True:
+        if self.autoconnect is True and self.is_trans is False:
             self.close()
 
         return f
@@ -858,6 +856,9 @@ class Database:
                 self.conn.rollback()
         finally:
             self.is_trans = False
+
+            if self.autoconnect is True:
+                self.close()
 
     @_replace_placeholders
     def _execute(self, query, params):
