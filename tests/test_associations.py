@@ -1,10 +1,17 @@
 from estoult import Query
-from .base import Organisation
+from .base import Organisation, Admin, User
 
 
 def test_has_one_get():
-    org = Query(Organisation).get().preload(Organisation.admin).execute()
+    org = (
+        Query(Organisation)
+        .get()
+        .preload({Organisation.admin: [{Admin.user: [User.name]}]})
+        .execute()
+    )
+
     assert org.get("admin") is not None
+    assert org["admin"].get("user") is not None
 
 
 def test_has_many_get():

@@ -25,6 +25,7 @@ except ImportError:
 
 __version__ = "0.5.3"
 __all__ = [
+    "Association",
     "Database",
     "Field",
     "fn",
@@ -566,17 +567,43 @@ class QueryMetaclass(type):
 Node = namedtuple("Node", ["node", "params"])
 
 
+def _do_preload_query(db, cardinality, query, value):
+    if cardinality == _Cardinals.ONE_TO_ONE:
+        return db.get_or_none(query, (value,))
+    elif cardinality == _Cardinals.ONE_TO_MANY:
+        return db.select(query, (value,))
+
+
 def _do_preload(db, association, row):
-    value = row[association.owner]
+    if isinstance(association, _Association):
+        query = f"""
+            select * from {association.schema.__tablename__}
+            where {association.field} = %s
+        """
+
+        return association.name, _do_preload_query(
+            db, association.cardinality, query, row[association.owner]
+        )
+
+    aso, values = list(association.items())[0]
+    associations = [
+        v for v in values if isinstance(v, _Association) or isinstance(v, dict)
+    ]
+    fields = [v.name for v in values if isinstance(v, Field)]
+    select = ", ".join(fields) if len(fields) > 0 else "*"
 
     query = f"""
-        select * from {association.schema.__tablename__} where {association.field} = %s
+        select {select} from {aso.schema.__tablename__}
+        where {aso.field} = %s
     """
 
-    if association.cardinality == _Cardinals.ONE_TO_ONE:
-        return db.get_or_none(query, (value,))
-    elif association.cardinality == _Cardinals.ONE_TO_MANY:
-        return db.select(query, (value,))
+    new_row = _do_preload_query(db, aso.cardinality, query, row[aso.owner])
+
+    for field_aso in associations:
+        name, field = _do_preload(db, field_aso, new_row)
+        new_row[name] = field
+
+    return aso.name, new_row
 
 
 class Query(metaclass=QueryMetaclass):
@@ -716,8 +743,8 @@ class Query(metaclass=QueryMetaclass):
 
         return self
 
-    def preload(self, field):
-        self._preloads.append(field)
+    def preload(self, association):
+        self._preloads.append(association)
         return self
 
     def execute(self):
@@ -730,9 +757,10 @@ class Query(metaclass=QueryMetaclass):
         for association, row in product(
             self._preloads, data if isinstance(data, list) else [data]
         ):
-            row[association.name] = _do_preload(
+            key, new_row = _do_preload(
                 self.schema._database_, association, row
             )
+            row[key] = new_row
 
         return data
 
