@@ -1,6 +1,8 @@
 import sys
 import io
 
+from itertools import product
+from enum import Enum
 from copy import deepcopy
 from collections import namedtuple
 from contextlib import contextmanager
@@ -23,6 +25,7 @@ except ImportError:
 
 __version__ = "0.5.3"
 __all__ = [
+    "Association",
     "Database",
     "Field",
     "fn",
@@ -321,6 +324,30 @@ class QF(Field):
         return f"<QF name={self.name}>"
 
 
+_Association = namedtuple(
+    "_Association", ["cardinality", "name", "schema", "owner", "field"]
+)
+
+
+class _Cardinals(Enum):
+    ONE_TO_ONE = 1
+    ONE_TO_MANY = 2
+
+
+class Association:
+    """
+    Very simple associations for preloading rows.
+    """
+
+    @staticmethod
+    def has_one(schema, on=[]):
+        return _Association(_Cardinals.ONE_TO_ONE, None, schema, on[0], on[1])
+
+    @staticmethod
+    def has_many(schema, on=[]):
+        return _Association(_Cardinals.ONE_TO_MANY, None, schema, on[0], on[1])
+
+
 class SchemaMetaclass(type):
     def __new__(cls, clsname, bases, attrs):
         # Deepcopy inherited fields
@@ -345,6 +372,9 @@ class SchemaMetaclass(type):
                 # Set name to var reference
                 if f.name is None:
                     f.name = key
+
+            if isinstance(f, _Association):
+                setattr(c, key, f._replace(name=key))
 
         return c
 
@@ -537,12 +567,52 @@ class QueryMetaclass(type):
 Node = namedtuple("Node", ["node", "params"])
 
 
+def _do_preload_query(db, cardinality, query, value):
+    if cardinality == _Cardinals.ONE_TO_ONE:
+        return db.get_or_none(query, (value,))
+    elif cardinality == _Cardinals.ONE_TO_MANY:
+        return db.select(query, (value,))
+
+
+def _do_preload(db, association, row):
+    if isinstance(association, _Association):
+        query = f"""
+            select * from {association.schema.__tablename__}
+            where {association.field} = %s
+        """
+
+        return association.name, _do_preload_query(
+            db, association.cardinality, query, row[association.owner]
+        )
+
+    aso, values = list(association.items())[0]
+    associations = [
+        v for v in values if isinstance(v, _Association) or isinstance(v, dict)
+    ]
+    fields = [v.name for v in values if isinstance(v, Field)]
+    select = ", ".join(fields) if len(fields) > 0 else "*"
+
+    query = f"""
+        select {select} from {aso.schema.__tablename__}
+        where {aso.field} = %s
+    """
+
+    new_row = _do_preload_query(db, aso.cardinality, query, row[aso.owner])
+
+    for field_aso in associations:
+        name, field = _do_preload(db, field_aso, new_row)
+        new_row[name] = field
+
+    return aso.name, new_row
+
+
 class Query(metaclass=QueryMetaclass):
     def __init__(self, schema):
         self.schema = schema
 
         self._method = None
         self._nodes = []
+        self._preloads = []
 
     def _add_node(self, node, params):
         self._nodes.append(Node(_strip(node), params))
@@ -673,9 +743,24 @@ class Query(metaclass=QueryMetaclass):
 
         return self
 
+    def preload(self, association):
+        self._preloads.append(association)
+        return self
+
     def execute(self):
         func = getattr(self.schema._database_, self._method)
-        return func(self._query, self._params)
+        data = func(self._query, self._params)
+
+        if data is None:
+            return data
+
+        for association, row in product(
+            self._preloads, data if isinstance(data, list) else [data]
+        ):
+            key, new_row = _do_preload(self.schema._database_, association, row)
+            row[key] = new_row
+
+        return data
 
     def copy(self):
         return deepcopy(self)
@@ -709,7 +794,7 @@ def _get_connection(func):
 
         f = func(self, *args, **kwargs)
 
-        if self.autoconnect is True:
+        if self.autoconnect is True and self.is_trans is False:
             self.close()
 
         return f
@@ -771,6 +856,9 @@ class Database:
                 self.conn.rollback()
         finally:
             self.is_trans = False
+
+            if self.autoconnect is True:
+                self.close()
 
     @_replace_placeholders
     def _execute(self, query, params):
