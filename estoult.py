@@ -325,7 +325,7 @@ class QF(Field):
 
 
 _Association = namedtuple(
-    "Association", ["cardinality", "name", "schema", "owner", "field"]
+    "_Association", ["cardinality", "name", "schema", "owner", "field"]
 )
 
 
