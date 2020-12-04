@@ -2,7 +2,7 @@ import os
 from hashlib import md5
 
 from apocryphan.pool import PooledSQLiteDatabase
-from estoult import Field, Query
+from estoult import Field, Query, Association
 
 _sql_file = "estoult.test.db"
 # Pytest is multithreded so we need a pool
@@ -15,7 +15,6 @@ class User(db.Schema):
 
     id = Field(int, null=False)
     organisation_id = Field(int, null=True)
-
     name = Field(str, null=False, default="default name")
 
     @classmethod
@@ -27,6 +26,17 @@ class User(db.Schema):
         return Query(cls).get_or_none().where(cls.name == name).execute()
 
 
+class Admin(db.Schema):
+
+    __tablename__ = "admins"
+
+    id = Field(int, null=False)
+    organisation_id = Field(int, null=False)
+    user_id = Field(int, null=False)
+
+    user = Association.has_one(User, on=["user_id", "id"])
+
+
 class Organisation(db.Schema):
 
     __tablename__ = "organisations"
@@ -34,9 +44,26 @@ class Organisation(db.Schema):
     id = Field(int, null=False)
     name = Field(str, null=False)
 
+    admin = Association.has_one(Admin, on=["id", "organisation_id"])
+    users = Association.has_many(User, on=["id", "organisation_id"])
+
 
 def db_create():
     db.connect()
+
+    db.sql(
+        """
+        create table if not exists organisations (
+            id integer primary key autoincrement not null,
+            name varchar(256) not null
+        );
+
+    """,
+        (),
+    )
+
+    db.sql("insert into organisations (name) values ('Astolfo Inc')", ())
+    db.sql("insert into organisations (name) values ('Micrapple PTY LTD')", ())
 
     db.sql(
         """
@@ -49,15 +76,22 @@ def db_create():
         (),
     )
 
+    db.sql("insert into users (organisation_id, name) values (1, 'My Name')", ())
+    db.sql("insert into users (organisation_id, name) values (2, 'Your Name')", ())
+
     db.sql(
         """
-        create table if not exists organisations (
+        create table if not exists admins (
             id integer primary key autoincrement not null,
-            name varchar(256) not null
+            organisation_id integer not null,
+            user_id integer not null
+
         );
     """,
         (),
     )
+
+    db.sql("insert into admins (organisation_id, user_id) values (1, 1)", ())
 
     db.close()
 

@@ -1,6 +1,8 @@
 import sys
 import io
 
+from itertools import product
+from enum import Enum
 from copy import deepcopy
 from collections import namedtuple
 from contextlib import contextmanager
@@ -321,6 +323,30 @@ class QF(Field):
         return f"<QF name={self.name}>"
 
 
+_Association = namedtuple(
+    "Association", ["cardinality", "name", "schema", "owner", "field"]
+)
+
+
+class _Cardinals(Enum):
+    ONE_TO_ONE = 1
+    ONE_TO_MANY = 2
+
+
+class Association:
+    """
+    Very simple associations for preloading rows.
+    """
+
+    @staticmethod
+    def has_one(schema, on=[]):
+        return _Association(_Cardinals.ONE_TO_ONE, None, schema, on[0], on[1])
+
+    @staticmethod
+    def has_many(schema, on=[]):
+        return _Association(_Cardinals.ONE_TO_MANY, None, schema, on[0], on[1])
+
+
 class SchemaMetaclass(type):
     def __new__(cls, clsname, bases, attrs):
         # Deepcopy inherited fields
@@ -345,6 +371,9 @@ class SchemaMetaclass(type):
                 # Set name to var reference
                 if f.name is None:
                     f.name = key
+
+            if isinstance(f, _Association):
+                setattr(c, key, f._replace(name=key))
 
         return c
 
@@ -537,12 +566,26 @@ class QueryMetaclass(type):
 Node = namedtuple("Node", ["node", "params"])
 
 
+def _do_preload(db, association, row):
+    value = row[association.owner]
+
+    query = f"""
+        select * from {association.schema.__tablename__} where {association.field} = %s
+    """
+
+    if association.cardinality == _Cardinals.ONE_TO_ONE:
+        return db.get_or_none(query, (value,))
+    elif association.cardinality == _Cardinals.ONE_TO_MANY:
+        return db.select(query, (value,))
+
+
 class Query(metaclass=QueryMetaclass):
     def __init__(self, schema):
         self.schema = schema
 
         self._method = None
         self._nodes = []
+        self._preloads = []
 
     def _add_node(self, node, params):
         self._nodes.append(Node(_strip(node), params))
@@ -673,9 +716,25 @@ class Query(metaclass=QueryMetaclass):
 
         return self
 
+    def preload(self, field):
+        self._preloads.append(field)
+        return self
+
     def execute(self):
         func = getattr(self.schema._database_, self._method)
-        return func(self._query, self._params)
+        data = func(self._query, self._params)
+
+        if data is None:
+            return data
+
+        for association, row in product(
+            self._preloads, data if isinstance(data, list) else [data]
+        ):
+            row[association.name] = _do_preload(
+                self.schema._database_, association, row
+            )
+
+        return data
 
     def copy(self):
         return deepcopy(self)
