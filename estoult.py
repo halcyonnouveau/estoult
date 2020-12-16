@@ -306,7 +306,7 @@ class Field(metaclass=FieldMetaclass):
 
 class QF(Field):
     """
-    An extra user defined field used for queries.
+    Query Field - an extra user defined field used for queries.
     This is mainly needed for referencing aliases.
 
     :param name: The name of the field.
@@ -336,7 +336,11 @@ class _Cardinals(Enum):
 
 class Association:
     """
-    Very simple associations for preloading rows.
+    One to One/Many associations to help translate between relational data and object
+    data.
+
+    Many to Many is currently not supported because it does not translate well into
+    an object structure.
     """
 
     @staticmethod
