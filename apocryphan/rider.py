@@ -344,14 +344,15 @@ class Rider:
 
             depends = m["__depends__"]
 
-            name = depends.pop()
+            if depends:
+                name = depends.pop()
 
-            if name and self.applied(name) is None:
-                raise MigrateError(
-                    f"""
-                    {m['id']} depends on {name} but it is not applied.
-                    """.strip()
-                )
+                if self.applied(name) is None:
+                    raise Exception(
+                        f"""
+                        {m['id']} depends on {name} but it is not applied.
+                        """.strip()
+                    )
 
             steps = m["steps"]
 
