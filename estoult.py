@@ -391,6 +391,14 @@ class SchemaMetaclass(type):
         ]
 
     @property
+    def associations(cls):
+        return [
+            getattr(cls, key)
+            for key in dir(cls)
+            if isinstance(getattr(cls, key), _Association)
+        ]
+
+    @property
     def pk(cls):
         pk = None
 
