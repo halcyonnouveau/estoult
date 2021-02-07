@@ -6,6 +6,7 @@ from enum import Enum
 from copy import deepcopy
 from collections import namedtuple
 from contextlib import contextmanager
+from typing import Union
 
 try:
     import sqlite3
@@ -278,6 +279,7 @@ class Field(metaclass=FieldMetaclass):
     def __init__(
         self, type, name=None, caster=None, null=True, default=None, primary_key=False
     ):
+        self.schema: Union[Schema, None] = None
         self.type = type
         self.name = name
 
@@ -545,7 +547,7 @@ class Schema(metaclass=SchemaMetaclass):
 
     @classmethod
     def delete_by_pk(cls, id, new):
-        return cls.delete({cls.pk.name: id}, new)
+        return cls.delete({cls.pk.name: id})
 
 
 class QueryMetaclass(type):
@@ -759,7 +761,7 @@ class Query(metaclass=QueryMetaclass):
         self._preloads.append(association)
         return self
 
-    def execute(self):
+    def execute(self) -> dict:
         func = getattr(self.schema._database_, self._method)
         data = func(self._query, self._params)
 

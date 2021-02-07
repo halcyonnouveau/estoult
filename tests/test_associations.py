@@ -27,3 +27,13 @@ def test_has_one_select():
 def test_has_many_select():
     Query(Organisation).select().preload(Organisation.users).execute()
     assert True
+
+
+def test_insert_and_update():
+    # new_org = {
+    #     "name": "Les Fans D'Astolfo",
+    #     "admin": {"user": {"name": "Test Account"}},
+    #     "users": [{"name": "Justin Duch"}, {"name": "Matthew Rousseau"}],
+    # }
+
+    assert True
