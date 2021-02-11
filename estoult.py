@@ -600,9 +600,14 @@ def _do_preload(db, association, row):
         )
 
     aso, values = list(association.items())[0]
+
+    if row.get(aso.owner) is None:
+        return aso.name, None
+
     associations = [
         v for v in values if isinstance(v, _Association) or isinstance(v, dict)
     ]
+
     fields = [v.name for v in values if isinstance(v, Field)]
     select = ", ".join(fields) if len(fields) > 0 else "*"
 
@@ -612,6 +617,9 @@ def _do_preload(db, association, row):
     """
 
     new_row = _do_preload_query(db, aso.cardinality, query, row[aso.owner])
+
+    if new_row is None:
+        return aso.name, None
 
     for field_aso in associations:
         name, field = _do_preload(db, field_aso, new_row)
