@@ -113,7 +113,6 @@ Instead of using ``get``, use ``select`` to get multiple records.
    my_books = (
         Query(Book)
         .select()
-        .where()
         .execute()
    )
 
