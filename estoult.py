@@ -422,6 +422,8 @@ class Schema(metaclass=SchemaMetaclass):
     _database_ = None
     __tablename__ = None
 
+    allow_wildcard_select = True
+
     @classmethod
     def _cast(cls, updating, row):
         # Allow you to use a Field as key
@@ -590,6 +592,12 @@ def _do_preload_query(db, cardinality, query, value):
 
 def _do_preload(db, association, row):
     if isinstance(association, _Association):
+        if association.schema.allow_wildcard_select is False:
+            raise QueryError(
+                f"Wildcard selects are disabled for {association.schema.__tablename__}"
+                ", please specify fields."
+            )
+
         query = f"""
             select * from {association.schema.__tablename__}
             where {association.field} = %s
@@ -610,6 +618,12 @@ def _do_preload(db, association, row):
 
     fields = [v.name for v in values if isinstance(v, Field)]
     select = ", ".join(fields) if len(fields) > 0 else "*"
+
+    if aso.schema.allow_wildcard_select is False and select == "*":
+        raise QueryError(
+            f"Wildcard selects are disabled for {aso.schema.__tablename__}, "
+            "please specify fields."
+        )
 
     query = f"""
         select {select} from {aso.schema.__tablename__}
@@ -654,6 +668,13 @@ class Query(metaclass=QueryMetaclass):
         params = []
 
         if len(args) < 1:
+
+            if self.schema.allow_wildcard_select is False:
+                raise QueryError(
+                    f"Wildcard selects are disabled for {self.schema.__tablename__}, "
+                    "please specify fields."
+                )
+
             query += "*"
         else:
             for arg in args:
