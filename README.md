@@ -26,7 +26,7 @@ pip install estoult
 
 ## Documentation
 
-Check the [documentation](https://estoult.readthedocs.io/en/latest/) for help.
+Check the [documentation](https://estoult.readthedocs.io/en/latest/) for help and [getting started](https://estoult.readthedocs.io/en/latest/getting_started.html).
 
 ## Contributing
 
