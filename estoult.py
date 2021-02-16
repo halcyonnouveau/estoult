@@ -245,6 +245,13 @@ class fn(metaclass=FunctionMetaclass):
         :param schema: The schema.
         :type schema: Schema
         """
+        if schema.allow_wildcard_select is False:
+            raise QueryError(
+                "Wildcard selects are disabled for schema: "
+                f"`{schema.__tablename__}`"
+                ", please specify fields."
+            )
+
         return Clause(f"{schema.__tablename__}.*", ())
 
 
