@@ -594,7 +594,8 @@ def _do_preload(db, association, row):
     if isinstance(association, _Association):
         if association.schema.allow_wildcard_select is False:
             raise QueryError(
-                f"Wildcard selects are disabled for {association.schema.__tablename__}"
+                "Wildcard selects are disabled for schema: "
+                f"`{association.schema.__tablename__}`"
                 ", please specify fields."
             )
 
@@ -621,8 +622,9 @@ def _do_preload(db, association, row):
 
     if aso.schema.allow_wildcard_select is False and select == "*":
         raise QueryError(
-            f"Wildcard selects are disabled for {aso.schema.__tablename__}, "
-            "please specify fields."
+            "Wildcard selects are disabled for schema: "
+            f"`{aso.schema.__tablename__}`"
+            ", please specify fields."
         )
 
     query = f"""
@@ -671,8 +673,9 @@ class Query(metaclass=QueryMetaclass):
 
             if self.schema.allow_wildcard_select is False:
                 raise QueryError(
-                    f"Wildcard selects are disabled for {self.schema.__tablename__}, "
-                    "please specify fields."
+                    "Wildcard selects are disabled for schema: "
+                    f"`{self.schema.__tablename__}`"
+                    ", please specify fields."
                 )
 
             query += "*"

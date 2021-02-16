@@ -9,6 +9,18 @@ _sql_file = "estoult.test.db"
 db = PooledSQLiteDatabase(database=_sql_file)
 
 
+class Data(db.Schema):
+    """For testing wildcard select."""
+
+    __tablename__ = "data"
+
+    allow_wildcard_select = False
+
+    id = Field(int, null=False)
+    user_id = Field(int)
+    value = Field(str)
+
+
 class User(db.Schema):
 
     __tablename__ = "users"
@@ -16,6 +28,8 @@ class User(db.Schema):
     id = Field(int, null=False)
     organisation_id = Field(int, null=True)
     name = Field(str, null=False, default="default name")
+
+    data = Association.has_many(Data, on=["id", "user_id"])
 
     @classmethod
     def new(cls, org_id=None, name=None):
@@ -50,6 +64,18 @@ class Organisation(db.Schema):
 
 def db_create():
     db.connect()
+
+    db.sql(
+        """
+        create table if not exists data (
+            id integer primary key autoincrement not null,
+            user_id integer,
+            value varchar(256)
+
+        );
+    """,
+        (),
+    )
 
     db.sql(
         """
