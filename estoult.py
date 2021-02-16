@@ -425,6 +425,11 @@ class SchemaMetaclass(type):
 
 
 class Schema(metaclass=SchemaMetaclass):
+    """
+    A schema representation of a database table.
+
+    :ivar allow_wildcard_select: Determines if wildcards can be used when 'selecting'.
+    """
 
     _database_ = None
     __tablename__ = None

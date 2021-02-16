@@ -3,6 +3,51 @@ Advanced Examples
 
 Examples of things the pros do with Estoult ;)
 
+Disabling wildcard selects on a schema
+--------------------------------------
+
+If performance is of importance to you, it is recommended to never use a wildcard (``*``) in your SQL select queries. For larger tables a ``select *`` is often `detrimental to performance <https://tanelpoder.com/posts/reasons-why-select-star-is-bad-for-sql-performance>`_. Unfortunately, most ORMs (and Estoult) make wildcards too easy to do, as they are the default when no fields are specifically provided in a query.
+
+But unlike most ORMs, Estoult doesn't suck and actually cares about performant SQL, so you can easily remove the ability to use a ``*`` with the class variable ``allow_wildcard_select`` in your schema.
+
+.. code-block:: python
+
+    class VeryBigTable(db.schema):
+        __tablename__ = "very_big_table"
+        allow_wildcard_select = False
+
+        id = Field(str)
+        field1 = Field(str)
+        field2 = Field(str)
+
+Because wildcards can still be useful for prototyping, and aren't a big of a problem for smaller tables, this allows you to pick and choose which schemas can use wildcards. You could also disallow them on every schema by default by using a base class, and separately allow them in each schema for smaller tables.
+
+Now running a select query without specifying fields will raise an error:
+
+.. code-block:: python
+
+    # ILLEGAL! GO TO GAOL!
+    Query(VeryBigTable).select().execute()
+
+    # Do this instead :3
+    Query(VeryBigTable).select(VeryBigTable.field2).execute()
+
+This also applies to preloading associations:
+
+.. code-block:: python
+
+    # BIG NO NO!
+    Query(VeryBigTableParent)
+        .select()
+        .preload(VeryBigTableParent.very_big_tables)
+        .execute()
+
+    # Very fast and correct, good job!
+    Query(VeryBigTableParent)
+        .select()
+        .preload({VeryBigTableParent.very_big_tables: [VeryBigTable.field1]})
+        .execute()
+
 Procedurally creating queries
 -----------------------------
 
@@ -15,9 +60,9 @@ You'd have one ``Schema`` to keep track of your general music collection and sev
     class Song(db.schema):
         __tablename__ = "songs"
 
-        id = Field(str, "id")
-        title = Field(str, "title")
-        artist = Field(str, "title")
+        id = Field(str)
+        title = Field(str)
+        artist = Field(str)
 
 
     class Spotfiy(db.schema):

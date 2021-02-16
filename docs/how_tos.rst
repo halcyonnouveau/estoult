@@ -26,7 +26,7 @@ Currently, the supported joins are:
 Display generated query
 -----------------------
 
-You can ``print`` any unexecuted ``Query`` to display the generated SQL.
+You can ``print`` any un-executed ``Query`` to display the generated SQL.
 
 .. code-block:: python
 
