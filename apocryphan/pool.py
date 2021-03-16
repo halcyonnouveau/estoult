@@ -192,12 +192,9 @@ class PooledDatabase(object):
         # Called on check-in to make sure the connection can be re-used.
         return True
 
-    def _close(self, close_conn=False):
-        conn = self.conn
-
-        if close_conn:
-            super(PooledDatabase, self)._close(conn)
-        elif self.conn_key in self._in_use:
+    def _close(self):
+        if self.conn_key in self._in_use:
+            conn = self.conn
             pool_conn = self._in_use.pop(self.conn_key)
 
             if self._stale_timeout and self._is_stale(pool_conn.timestamp):
