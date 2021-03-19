@@ -200,6 +200,8 @@ class FunctionMetaclass(type):
         "ceil",
         "distinct",
         "concat",
+        "max",
+        "min",
     ]
 
     def __new__(cls, clsname, bases, attrs):
@@ -465,7 +467,10 @@ class Schema(metaclass=SchemaMetaclass):
 
             # Apply a default if we are inserting
             if value is None and updating is False and field.default is not None:
-                value = field.default
+                if callable(field.default) is True:
+                    value = field.default()
+                else:
+                    value = field.default
 
             # Cast the value
             if value is not None:
