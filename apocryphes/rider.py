@@ -37,7 +37,7 @@ This will create the bellow scaffold file in which you can add your migration st
     create table
     '''
 
-    from apocryphan.rider import step
+    from apocryphes.rider import step
 
     __depends__ = {"1602721237-add-pg-extensions"}
 
@@ -141,7 +141,7 @@ SCAFFOLD = """
 %s
 \"""
 
-from apocryphan.rider import step
+from apocryphes.rider import step
 
 __depends__ = {"%s"}
 

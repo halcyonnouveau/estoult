@@ -11,7 +11,7 @@ explicitly (using ``.manual_close()``).
 
 .. code-block:: python
 
-    from apocryphan.pool import PooledPostgreSQLDatabase
+    from apocryphes.pool import PooledPostgreSQLDatabase
 
     db = PooledPostgreSQLDatabase(
         max_connections=32,

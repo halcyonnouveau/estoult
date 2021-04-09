@@ -29,10 +29,7 @@ def test_left_join():
 
 
 def test_order_by():
-    s = (
-        "select * from users order by users.name desc, users.id "
-        "limit 10 offset 2"
-    )
+    s = "select * from users order by users.name desc, users.id " "limit 10 offset 2"
     q = Query(User).select().order_by({User.name: "desc"}, User.id).limit(10, 2)
     assertSQL(q, s)
 
@@ -53,3 +50,11 @@ def test_wildcard_preload_fail():
 
 def test_wildcard_preload_pass():
     Query(User).select().preload({User.data: [Data.value]}).execute()
+
+
+def test_query_update():
+    Query(User).update({"name": "Astolfo"}).where(User.name == "Charlemagne").execute()
+
+
+def test_query_delete():
+    Query(User).delete().where(User.name == "Charlemagne").execute()

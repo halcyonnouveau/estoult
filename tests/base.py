@@ -1,7 +1,7 @@
 import os
 from hashlib import md5
 
-from apocryphan.pool import PooledSQLiteDatabase
+from apocryphes.pool import PooledSQLiteDatabase
 from estoult import Field, Query, Association
 
 _sql_file = "estoult.test.db"
@@ -45,8 +45,8 @@ class Admin(db.Schema):
     __tablename__ = "admins"
 
     id = Field(int, null=False)
-    organisation_id = Field(int, null=False)
-    user_id = Field(int, null=False)
+    organisation_id = Field(int)
+    user_id = Field(int)
 
     user = Association.has_one(User, on=["user_id", "id"])
 
@@ -109,8 +109,8 @@ def db_create():
         """
         create table if not exists admins (
             id integer primary key autoincrement not null,
-            organisation_id integer not null,
-            user_id integer not null
+            organisation_id integer,
+            user_id integer
 
         );
     """,
@@ -132,3 +132,17 @@ def assertSQL(query, sql):
     q = md5(str(query).encode("utf-8")).hexdigest()
     s = md5(sql.encode("utf-8")).hexdigest()
     assert q == s
+
+
+def recurse_replace(row):
+    for key in row.keys():
+        if isinstance(row[key], list):
+            for obj in row[key]:
+                recurse_replace(obj)
+        if isinstance(row[key], dict):
+            recurse_replace(row[key])
+
+        if key.endswith("id"):
+            row[key] = None
+
+    return row

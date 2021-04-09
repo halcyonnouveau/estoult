@@ -69,21 +69,20 @@ We can insert new rows into our tables like this:
 .. code-block:: python
 
     new_author = {"first_name": "Kurt", "last_name": "Vonnegut"}
-
-    # `insert` returns the id of the new row
-    new_author["id"] = Author.insert(new_author)
+    new_author = Author.insert(new_author)
 
     new_book = {"name": "Player Piano", "author_id": new_author["id"]}
-
-    new_book["id"] = Book.insert(new_book)
+    new_book = Book.insert(new_book)
 
 To update the row, we use ``update``:
 
 .. code-block:: python
 
-    Book.update(new_book, {"name": "Slaughterhouse-Five"})
+    new_book = Book.update(new_book, {"name": "Slaughterhouse-Five"})
 
 Here we updated the row ``new_book`` with a new ``name``.
+
+(v0.7.0): ``update`` and ``insert`` return the "changeset" of the row. That is, it returns the row that is given executed in database (after ``default``, ``caster``, ``null``, etc... has been applied). For inserting it also adds the ``primary_key`` if missing.
 
 Fetching a single record
 ------------------------

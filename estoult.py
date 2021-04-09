@@ -6,7 +6,7 @@ from enum import Enum
 from copy import deepcopy
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import Union
+from typing import Union, Any, Optional
 
 try:
     import sqlite3
@@ -24,7 +24,7 @@ except ImportError:
     mysql = None
 
 
-__version__ = "0.6.6"
+__version__ = "0.7.0"
 __all__ = [
     "Association",
     "Database",
@@ -288,9 +288,9 @@ class Field(metaclass=FieldMetaclass):
     def __init__(
         self, type, name=None, caster=None, null=True, default=None, primary_key=False
     ):
-        self.schema: Union[Schema, None] = None
-        self.type = type
-        self.name = name
+        self.schema: Optional[Schema] = None
+        self.type: str = type
+        self.name: Optional[str] = name
 
         self.caster = caster
         self.null = null
@@ -433,7 +433,7 @@ class Schema(metaclass=SchemaMetaclass):
     :ivar allow_wildcard_select: Determines if wildcards can be used when 'selecting'.
     """
 
-    _database_ = None
+    _database_: Any = None
     __tablename__ = None
 
     allow_wildcard_select = True
@@ -511,7 +511,26 @@ class Schema(metaclass=SchemaMetaclass):
         return changeset
 
     @classmethod
+    def _get_field_by_name(cls, name: Any):
+        # BIG HACK OH NO
+        if isinstance(name, Field):
+            name = name.name
+        return getattr(cls, name)
+
+    @classmethod
+    def _is_association(cls, name):
+        return isinstance(cls._get_field_by_name(name), _Association)
+
+    @classmethod
     def insert(cls, obj):
+        # Pop associations
+        associations = {
+            cls._get_field_by_name(k): obj.pop(k)
+            for k in [
+                key for key in obj.keys() if cls._is_association(key) and obj[key]
+            ]
+        }
+
         changeset = cls._casval(obj, updating=False)
 
         params = list(changeset.values())
@@ -526,13 +545,41 @@ class Schema(metaclass=SchemaMetaclass):
         if psycopg2 is not None:
             sql += f" returning {cls.pk.name}"
 
-        return cls._database_.insert(_strip(sql), params)
+        pk = cls._database_.insert(_strip(sql), params)
+        changeset[cls.pk.name] = pk
+
+        if associations:
+            changeset_asos = {}
+
+            for aso, value in associations.items():
+                changeset, changeset_asos[aso.name] = _do_association(
+                    changeset, cls, aso, value
+                )
+
+            changeset = {**changeset, **changeset_asos}
+
+        return changeset
 
     @classmethod
     def update(cls, old, new):
-        # This updates a single row only, if you want to update several
-        # use `update` in `Query`
-        changeset = cls._casval({**old, **new}, updating=True)
+        obj = {**old, **new}
+
+        # Pop associations
+        associations = {
+            cls._get_field_by_name(k): obj.pop(k)
+            for k in [
+                key for key in obj.keys() if cls._is_association(key) and obj[key]
+            ]
+        }
+
+        # Pop from old
+        old_ks = [k for k in old.keys()]
+        for k in old_ks:
+            if cls._is_association(k):
+                old.pop(k, None)
+
+        changeset = cls._casval(obj, updating=True)
+
         sql = f"update {cls.__tablename__} set "
         params = []
 
@@ -546,7 +593,19 @@ class Schema(metaclass=SchemaMetaclass):
             sql += f"{key} = %s and "
             params.append(value)
 
-        return cls._database_.sql(_strip(sql), params)
+        cls._database_.sql(_strip(sql), params)
+
+        if associations:
+            changeset_asos = {}
+
+            for aso, value in associations.items():
+                changeset, changeset_asos[aso.name] = _do_association(
+                    changeset, cls, aso, value
+                )
+
+            changeset = {**changeset, **changeset_asos}
+
+        return changeset
 
     @classmethod
     def update_by_pk(cls, id, new):
@@ -600,72 +659,11 @@ class QueryMetaclass(type):
 Node = namedtuple("Node", ["node", "params"])
 
 
-def _do_preload_query(db, cardinality, query, value):
-    if cardinality == _Cardinals.ONE_TO_ONE:
-        return db.get_or_none(query, (value,))
-    elif cardinality == _Cardinals.ONE_TO_MANY:
-        return db.select(query, (value,))
-
-
-def _do_preload(db, association, row):
-    if isinstance(association, _Association):
-        if association.schema.allow_wildcard_select is False:
-            raise QueryError(
-                "Wildcard selects are disabled for schema: "
-                f"`{association.schema.__tablename__}`"
-                ", please specify fields."
-            )
-
-        query = f"""
-            select * from {association.schema.__tablename__}
-            where {association.field} = %s
-        """
-
-        return association.name, _do_preload_query(
-            db, association.cardinality, query, row[association.owner]
-        )
-
-    aso, values = list(association.items())[0]
-
-    if row.get(aso.owner) is None:
-        return aso.name, None
-
-    associations = [
-        v for v in values if isinstance(v, _Association) or isinstance(v, dict)
-    ]
-
-    fields = [v.name for v in values if isinstance(v, Field)]
-    select = ", ".join(fields) if len(fields) > 0 else "*"
-
-    if aso.schema.allow_wildcard_select is False and select == "*":
-        raise QueryError(
-            "Wildcard selects are disabled for schema: "
-            f"`{aso.schema.__tablename__}`"
-            ", please specify fields."
-        )
-
-    query = f"""
-        select {select} from {aso.schema.__tablename__}
-        where {aso.field} = %s
-    """
-
-    new_row = _do_preload_query(db, aso.cardinality, query, row[aso.owner])
-
-    if new_row is None:
-        return aso.name, None
-
-    for field_aso in associations:
-        name, field = _do_preload(db, field_aso, new_row)
-        new_row[name] = field
-
-    return aso.name, new_row
-
-
 class Query(metaclass=QueryMetaclass):
     def __init__(self, schema):
         self.schema = schema
 
-        self._method = None
+        self._method: Optional[str] = None
         self._nodes = []
         self._preloads = []
 
@@ -810,7 +808,10 @@ class Query(metaclass=QueryMetaclass):
         self._preloads.append(association)
         return self
 
-    def execute(self) -> dict:
+    def execute(self) -> Any:
+        if self._method is None:
+            raise QueryError("No method")
+
         func = getattr(self.schema._database_, self._method)
         data = func(self._query, self._params)
 
@@ -837,6 +838,110 @@ class Query(metaclass=QueryMetaclass):
 
     def __repr__(self):
         return f'<Query query="{self._query}" params={self._params}>'
+
+
+def _do_association_update(row, schema, association, obj):
+    aso_schema = association.schema
+    pk_name = aso_schema.pk.name
+
+    updating = pk_name in obj.keys()
+
+    # Make sure association is always linked to our row
+    obj[association.field] = row.get(association.owner)
+
+    if updating is True:
+        # Update the association
+        obj = aso_schema.update({pk_name: obj[pk_name]}, obj)
+        id = obj[pk_name]
+
+        # If the schema is not associated with it, do it now
+        aso_on = row.get(association.owner)
+        row[association.owner] = id
+
+        if id != aso_on:
+            row = schema.update({schema.pk.name: row[schema.pk.name]}, row)
+    else:
+        # Insert the new association
+        obj = aso_schema.insert(obj)
+        # Update the previous schema to include the new association
+        row = schema.update(row, {association.owner: obj[association.field]})
+
+    return row, obj
+
+
+def _do_association(row, schema, association, obj):
+    if association.cardinality == _Cardinals.ONE_TO_ONE:
+        return _do_association_update(row, schema, association, obj)
+    else:
+        # if association.cardinality == _Cardinals.ONE_TO_MANY:
+        new_objs = []
+        for o in obj:
+            row, new = _do_association_update(row, schema, association, o)
+            new_objs.append(new)
+
+        return row, new_objs
+
+
+def _do_preload_query(db, cardinality, query, value):
+    if cardinality == _Cardinals.ONE_TO_ONE:
+        return db.get_or_none(query, (value,))
+    else:
+        # if cardinality == _Cardinals.ONE_TO_MANY:
+        return db.select(query, (value,))
+
+
+def _do_preload(db, association, row):
+    if isinstance(association, _Association):
+        if association.schema.allow_wildcard_select is False:
+            raise QueryError(
+                "Wildcard selects are disabled for schema: "
+                f"`{association.schema.__tablename__}`"
+                ", please specify fields."
+            )
+
+        query = f"""
+            select * from {association.schema.__tablename__}
+            where {association.field} = %s
+        """
+
+        return association.name, _do_preload_query(
+            db, association.cardinality, query, row[association.owner]
+        )
+
+    aso, values = list(association.items())[0]
+
+    if row.get(aso.owner) is None:
+        return aso.name, None
+
+    associations = [
+        v for v in values if isinstance(v, _Association) or isinstance(v, dict)
+    ]
+
+    fields = [v.name for v in values if isinstance(v, Field) and v.name is not None]
+    select = ", ".join(fields) if len(fields) > 0 else "*"
+
+    if aso.schema.allow_wildcard_select is False and select == "*":
+        raise QueryError(
+            "Wildcard selects are disabled for schema: "
+            f"`{aso.schema.__tablename__}`"
+            ", please specify fields."
+        )
+
+    query = f"""
+        select {select} from {aso.schema.__tablename__}
+        where {aso.field} = %s
+    """
+
+    new_row = _do_preload_query(db, aso.cardinality, query, row[aso.owner])
+
+    if new_row is None:
+        return aso.name, None
+
+    for field_aso in associations:
+        name, field = _do_preload(db, field_aso, new_row)
+        new_row[name] = field
+
+    return aso.name, new_row
 
 
 def _replace_placeholders(func):
