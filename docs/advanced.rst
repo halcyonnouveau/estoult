@@ -152,7 +152,7 @@ This also applies to preloading associations:
         .preload({VeryBigTableParent.very_big_tables: [VeryBigTable.field1]})
         .execute()
 
-Procedurally creating queries
+Procedurally building queries
 -----------------------------
 
 Imagine you have a service to sync your music library between multiple streaming platforms.
@@ -257,3 +257,24 @@ Finally, we can add it to a ``delete`` function.
     Query(Song).delete().where(op.in_(Song.id, select_query)).execute()
 
 Now we only need to change the ``links`` dictionary instead of messing around with the query.
+
+This is what it looks like all together for reference:
+
+.. code-block:: python
+
+    links = {
+        "spotify": Spotfiy
+        "applemusic": AppleMusic,
+        "soundcloud": Soundcloud,
+    }
+
+    select_query = Query(Song).select(Song.id)
+
+    for schema in links.values():
+        select_query.left_join(schema, on=[Song.id, schema.song_id])
+
+    select_query.where(
+        *[op.is_null(s[f"{n}_id"]) for n, s in links.items()]
+    )
+
+    Query(Song).delete().where(op.in_(Song.id, select_query)).execute()
