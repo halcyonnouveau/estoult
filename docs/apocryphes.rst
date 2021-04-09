@@ -1,4 +1,4 @@
-apocryphes
+Apocryphes
 ==========
 
 Estoult includes a number of extensions in the ``apocryphes`` namespace.

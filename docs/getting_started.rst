@@ -82,7 +82,7 @@ To update the row, we use ``update``:
 
 Here we updated the row ``new_book`` with a new ``name``.
 
-(v0.7.0): ``update`` and ``insert`` return the "changeset" of the row. That is, it returns the row that is given executed in database (after ``default``, ``caster``, ``null``, etc... has been applied). For inserting it also adds the ``primary_key`` if missing.
+``update`` and ``insert`` return the "changeset" of the row. That is, it returns the row that is given executed in database (after ``default``, ``caster``, ``null``, etc... has been applied). For inserting it also adds the ``primary_key`` if missing.
 
 Fetching a single record
 ------------------------

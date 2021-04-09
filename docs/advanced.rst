@@ -1,7 +1,111 @@
 Advanced Examples
 =================
 
-Examples of things the pros do with Estoult ;)
+These are examples of some of the more advanced features that Estoult has.
+
+Associations
+------------
+
+Currently only two kinds of associations are supported: one-to-one and one-to-many. You can create them with the ``Association`` class.
+
+Here's an example where we have an ``Organisation`` that has many ``Users`` and one ``Admin``. Where an ``Admin`` is also a ``User``.
+
+.. code-block:: python
+
+   from esoult import Field, Association
+
+
+   class User(db.Schema):
+
+       __tablename__ = "users"
+
+       id = Field(int, null=False)
+       organisation_id = Field(int)
+       name = Field(str)
+
+   class Admin(db.Schema):
+
+       __tablename__ = "admins"
+
+       id = Field(int, null=False)
+       organisation_id = Field(int)
+       user_id = Field(int)
+
+       user = Association.has_one(User, on=["user_id", "id"])
+
+   class Organisation(db.Schema):
+
+       __tablename__ = "organisations"
+
+       id = Field(int, null=False)
+       name = Field(str)
+
+       admin = Association.has_one(Admin, on=["id", "organisation_id"])
+       users = Association.has_many(User, on=["id", "organisation_id"])
+
+With associations we can now ``preload`` to retrieve all the data from ``Organisation`` to ``User`` without having to construct multiple queries.
+
+.. code-block:: python
+
+   organisations = (
+      Query(Organisation)
+      .select()
+      .preload({Organisation.admin: [Admin.user])
+      .preload(Organisation.users)
+      .execute()
+   )
+
+To retrieve all the fields in the associated schema you can have the association field by itself, like with ``.preload(Organisation.users)``. To define specific fields and associations in the schema (Estoult will not recursively go through every association by default for performance reasons, so they must be specified), pass in a dictionary with the key as the owner field and the value as a list of fields.
+
+This ``select`` will return a list of rows looking something like this:
+
+.. code-block:: python
+
+   [
+      {
+         "id": 1,
+         "name": "Org Name",
+         "admin": {
+            "user": {"id": 2, "name": "Real Name"}
+         },
+         "users": [
+            {"id": 3, "name": "Fake Name"}
+            ...
+         ]
+      }
+      ...
+   ]
+
+Note that we aren't getting the ``id`` in the ``admin`` field because we only specified ``Admin.user``. If instead, we wanted the ``id`` of ``admin`` but not of ``user`` we would need to change the preload:
+
+.. code-block:: python
+
+   # From this
+   .preload({Organisation.admin: [Admin.user])
+   # To this
+   .preload({Organisation.admin: [Admin.id, {Admin.user: [User.name]}]})
+
+For creating and updating with associations you pass in the same structure you would get from a ``preload``.
+
+.. code-block:: python
+
+   new_org = {
+      "name": "Les Fans D'Astolfo",
+      "admin": {
+         "user": {"name": "Test Account"}
+      },
+      "users": [
+         # This is updated
+         {"id": 4, "name": "Justin Duch"},
+         # This is inserted
+         {"name": "Emilie Rousseau"}
+      ],
+   }
+
+   org = Organisation.insert(new_org)
+
+For each association, if there is a primary key supplied it will update the row, otherwise it will do an insert. This is the same no matter if the parent is  inserting or updating.
+
 
 Disabling wildcard selects on a schema
 --------------------------------------

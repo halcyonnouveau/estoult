@@ -23,18 +23,6 @@ Currently, the supported joins are:
 - ``full_join``
 - ``full_outer_join``
 
-Display generated query
------------------------
-
-You can ``print`` any un-executed ``Query`` to display the generated SQL.
-
-.. code-block:: python
-
-    >>> print(Query(Animal).select().where(Animal.name == "Red Panda"))
-    select * from animals where animals.name = "Red Panda"
-
-To format the query parameters, Estoult uses the ``mogrify`` function for PostgreSQL and just runs it for the other sources. This means it will fail if there is a syntax error in the SQL. To see it unformatted you will need to use ``repr`` as well.
-
 Validation
 ----------
 
@@ -137,7 +125,6 @@ Function operators are imported with the ``fn`` module.
    * - ``fn.cast``
      - ``.select(fn.cast(Person.dob, "datetime"))``
 
-
 Adding Ops/Fns
 --------------
 
@@ -168,3 +155,15 @@ Now we can use it anywhere:
         .execute())
 
 The same can be done for the ``fn`` module using ``add_fn``.
+
+Display generated query
+-----------------------
+
+You can ``print`` any un-executed ``Query`` to display the generated SQL.
+
+.. code-block:: python
+
+    >>> print(Query(Animal).select().where(Animal.name == "Red Panda"))
+    select * from animals where animals.name = "Red Panda"
+
+To format the query parameters, Estoult uses the ``mogrify`` function for PostgreSQL and just runs it for the other sources. This means it will fail if there is a syntax error in the SQL. To see it unformatted you will need to use ``repr`` as well.
