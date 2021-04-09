@@ -7,7 +7,6 @@
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/estoult)](https://pypi.org/project/estoult/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/estoult)](https://pypi.org/project/estoult/)
 [![Documentation Status](https://readthedocs.org/projects/estoult/badge/?version=latest)](https://estoult.readthedocs.io/en/latest/?badge=latest)
-[![Code Climate maintainability](https://img.shields.io/codeclimate/maintainability-percentage/halcyonnouveau/estoult)](https://codeclimate.com/github/halcyonnouveau/estoult)
 
 Estoult is a Python toolkit for data mapping with an integrated query builder for SQL databases. It currently supports MySQL, PostgreSQL, and SQLite.
 
