@@ -1,4 +1,4 @@
-from estoult import Query, QF, fn
+from estoult import Query, qf, fn
 from .base import assertSQL, User
 
 
@@ -22,5 +22,5 @@ def test_avg():
 
 def test_alias():
     s = "select sum(users.id) as sum from users order by sum"
-    q = Query(User).select(fn.alias(fn.sum(User.id), "sum")).order_by(QF("sum"))
+    q = Query(User).select(fn.alias(fn.sum(User.id), "sum")).order_by(qf("sum"))
     assertSQL(q, s)

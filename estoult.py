@@ -32,7 +32,7 @@ __all__ = [
     "fn",
     "op",
     "Schema",
-    "QF",
+    "qf",
     "Query",
 ]
 
@@ -315,9 +315,9 @@ class Field(metaclass=FieldMetaclass):
         )
 
 
-class QF(Field):
+class qf(Field):
     """
-    Query Field - an extra user defined field used for queries.
+    Query field - an extra user defined field used for queries.
     This is mainly needed for referencing aliases.
 
     :param name: The name of the field.
@@ -332,7 +332,7 @@ class QF(Field):
         return f"{self.name}"
 
     def __repr__(self):
-        return f"<QF name={self.name}>"
+        return f"<qf name={self.name}>"
 
 
 _Association = namedtuple(
