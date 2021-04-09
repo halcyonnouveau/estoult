@@ -327,7 +327,7 @@ class Rider:
 
         print(f"Created migration scaffold in {path}")
 
-    def applied(self, id):
+    def applied_at(self, id):
         return (
             Query(RiderMigration)
             .get_or_none()
@@ -356,7 +356,7 @@ class Rider:
             if depends:
                 name = depends.pop()
 
-                if self.applied(name) is None:
+                if self.applied_at(name) is None:
                     raise Exception(
                         f"""
                         {m['id']} depends on {name} but it is not applied.
@@ -391,7 +391,7 @@ class Rider:
         rows = []
 
         for idx, m in enumerate(migs):
-            applied = self.applied(m["id"])
+            applied = self.applied_at(m["id"])
 
             if applied:
                 applied = applied.strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -413,7 +413,7 @@ class Rider:
         roll_to.reverse()
 
         for roll in roll_to:
-            if self.applied(roll["id"]) is None:
+            if self.applied_at(roll["id"]) is None:
                 continue
 
             steps = roll["steps"]
