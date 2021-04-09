@@ -2,9 +2,10 @@
 
 # Estoult
 
-[![PyPI - License](https://img.shields.io/pypi/l/estoult)](https://pypi.org/project/estoult/)
 [![PyPI](https://img.shields.io/pypi/v/estoult)](https://pypi.org/project/estoult/)
+[![PyPI - License](https://img.shields.io/pypi/l/estoult)](https://pypi.org/project/estoult/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/estoult)](https://pypi.org/project/estoult/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/estoult)](https://pypi.org/project/estoult/)
 [![Documentation Status](https://readthedocs.org/projects/estoult/badge/?version=latest)](https://estoult.readthedocs.io/en/latest/?badge=latest)
 [![Code Climate maintainability](https://img.shields.io/codeclimate/maintainability-percentage/halcyonnouveau/estoult)](https://codeclimate.com/github/halcyonnouveau/estoult)
 
