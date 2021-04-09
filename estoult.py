@@ -923,7 +923,6 @@ class Database:
             if self.autoconnect is True:
                 self.close()
 
-    @_replace_placeholders
     def _execute(self, query, params):
         self.cursor.execute(query, params)
 
@@ -998,6 +997,10 @@ class SQLiteDatabase(Database):
 
     def _connect(self):
         return sqlite3.connect(*self.cargs, **self.ckwargs)
+
+    @_replace_placeholders
+    def _execute(self, *args, **kwargs):
+        return super()._execute(*args, **kwargs)
 
     @_get_connection
     def mogrify(self, query, params):
