@@ -81,7 +81,7 @@ object.
         step(migrate_step, rollback_step),
     ]
 
-View migrations:
+View all migrations with their index/message/applied at time:
 
 .. code-block:: bash
 
@@ -92,6 +92,15 @@ Apply migrations:
 .. code-block:: bash
 
     rider migrate
+
+Rollback database to a migration.
+
+.. code-block:: bash
+
+    # Migration indicies can be found in the `migrations` list
+    rider migrations
+    # Rollback to 8th migration (index starts at 0)
+    rider rollback -i 7
 """
 
 import os
