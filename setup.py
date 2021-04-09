@@ -24,7 +24,7 @@ setup(
     author_email="justin@duch.me",
     url="https://github.com/halcyonnouveau/estoult",
     py_modules=["estoult"],
-    packages=["apocryphess"],
+    packages=["apocryphes"],
     entry_points={"console_scripts": ["rider=apocryphes.rider:entry"]},
     classifiers=[
         "Development Status :: 5 - Production/Stable",
