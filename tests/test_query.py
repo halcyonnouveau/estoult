@@ -1,5 +1,5 @@
 import pytest
-from estoult import Query, QueryError
+from estoult import Query, QueryError, fn
 from .base import assertSQL, User, Organisation, Data
 
 
@@ -28,8 +28,23 @@ def test_left_join():
     assertSQL(q, s)
 
 
+def test_query_union():
+    s = (
+        "select * from users union select users.* from organisations "
+        "left join users on users.organisation_id = organisations.id"
+    )
+    q = (
+        Query(User)
+        .select()
+        .union(Organisation)
+        .select(fn.wild(User))
+        .left_join(User, on=[User.organisation_id, Organisation.id])
+    )
+    assertSQL(q, s)
+
+
 def test_order_by():
-    s = "select * from users order by users.name desc, users.id " "limit 10 offset 2"
+    s = "select * from users order by users.name desc, users.id limit 10 offset 2"
     q = Query(User).select().order_by({User.name: "desc"}, User.id).limit(10, 2)
     assertSQL(q, s)
 
