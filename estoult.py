@@ -740,8 +740,9 @@ class Query(metaclass=QueryMetaclass):
         self._method = "get_or_none"
         return self
 
-    def union(self):
+    def union(self, schema):
         self._add_node("union", ())
+        self.schema = schema
         return self
 
     def where(self, *clauses):
