@@ -935,8 +935,8 @@ def _do_preload(db, association, row):
 
     new_row = _do_preload_query(db, aso.cardinality, query, row[aso.owner])
 
-    if new_row is None:
-        return aso.name, None
+    if new_row is None or new_row == []:
+        return aso.name, new_row
 
     for field_aso in associations:
         name, field = _do_preload(db, field_aso, new_row)
