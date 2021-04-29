@@ -6,7 +6,7 @@ from enum import Enum
 from copy import deepcopy
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import Union, Any, Optional
+from typing import Any, Optional
 
 try:
     import sqlite3
@@ -27,11 +27,13 @@ except ImportError:
 __version__ = "0.7.1"
 __all__ = [
     "Association",
-    "Database",
     "Field",
     "fn",
+    "MySQLDatabase",
     "op",
+    "PostgreSQLDatabase",
     "Schema",
+    "SQLiteDatabase",
     "qf",
     "Query",
 ]
@@ -54,6 +56,10 @@ class QueryError(EstoultError):
 
 
 class DatabaseError(EstoultError):
+    pass
+
+
+class AssociationError(EstoultError):
     pass
 
 
@@ -886,12 +892,15 @@ def _do_association(row, schema, association, obj):
 def _do_preload_query(db, cardinality, query, value):
     if cardinality == _Cardinals.ONE_TO_ONE:
         return db.get_or_none(query, (value,))
-    else:
-        # if cardinality == _Cardinals.ONE_TO_MANY:
+    elif cardinality == _Cardinals.ONE_TO_MANY:
         return db.select(query, (value,))
+
+    raise AssociationError("Association has unknown cardinality")
 
 
 def _do_preload(db, association, row):
+    # If the association is just an association, then we can preload it without any
+    # issues
     if isinstance(association, _Association):
         if association.schema.allow_wildcard_select is False:
             raise QueryError(
@@ -909,6 +918,7 @@ def _do_preload(db, association, row):
             db, association.cardinality, query, row[association.owner]
         )
 
+    # Otherwise, associations can be dicts or lists and we need to recurse through them
     aso, values = list(association.items())[0]
 
     if row.get(aso.owner) is None:
@@ -935,6 +945,7 @@ def _do_preload(db, association, row):
 
     new_row = _do_preload_query(db, aso.cardinality, query, row[aso.owner])
 
+    # If there's nothing associated with it, then just move on
     if new_row is None or new_row == []:
         return aso.name, new_row
 
@@ -971,7 +982,7 @@ def _get_connection(func):
     return wrapper
 
 
-class Database:
+class _Database:
     def __init__(self, autoconnect=True, *args, **kwargs):
         self.autoconnect = autoconnect
 
@@ -1065,7 +1076,7 @@ class Database:
             return None
 
 
-class MySQLDatabase(Database):
+class MySQLDatabase(_Database):
     def __init__(self, *args, **kwargs):
         self.placeholder = "%s"
 
@@ -1081,7 +1092,7 @@ class MySQLDatabase(Database):
             return self.cursor._executed
 
 
-class PostgreSQLDatabase(Database):
+class PostgreSQLDatabase(_Database):
     def __init__(self, *args, **kwargs):
         self.placeholder = "%s"
 
@@ -1095,7 +1106,7 @@ class PostgreSQLDatabase(Database):
         return self.cursor.mogrify(query, params)
 
 
-class SQLiteDatabase(Database):
+class SQLiteDatabase(_Database):
     def __init__(self, *args, **kwargs):
         self.placeholder = "?"
 

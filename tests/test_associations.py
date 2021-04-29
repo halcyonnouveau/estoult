@@ -1,4 +1,5 @@
 import copy
+
 from estoult import Query
 from .base import Organisation, Admin, User, recurse_replace
 
@@ -31,7 +32,7 @@ def test_has_many_select():
 
 
 def test_insert_and_update():
-    # TODO: Test without None's
+    # TODO: Test without making Nones
     org_name = "Les Fans D'Astolfo"
     new_org = {
         "name": org_name,
