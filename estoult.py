@@ -982,7 +982,7 @@ def _get_connection(func):
     return wrapper
 
 
-class _Database:
+class Database:
     def __init__(self, autoconnect=True, *args, **kwargs):
         self.autoconnect = autoconnect
 
@@ -1076,7 +1076,7 @@ class _Database:
             return None
 
 
-class MySQLDatabase(_Database):
+class MySQLDatabase(Database):
     def __init__(self, *args, **kwargs):
         self.placeholder = "%s"
 
@@ -1092,7 +1092,7 @@ class MySQLDatabase(_Database):
             return self.cursor._executed
 
 
-class PostgreSQLDatabase(_Database):
+class PostgreSQLDatabase(Database):
     def __init__(self, *args, **kwargs):
         self.placeholder = "%s"
 
@@ -1106,7 +1106,7 @@ class PostgreSQLDatabase(_Database):
         return self.cursor.mogrify(query, params)
 
 
-class SQLiteDatabase(_Database):
+class SQLiteDatabase(Database):
     def __init__(self, *args, **kwargs):
         self.placeholder = "?"
 

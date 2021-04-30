@@ -60,7 +60,6 @@ from estoult import MySQLDatabase, PostgreSQLDatabase, SQLiteDatabase
 
 
 __all__ = [
-    "PooledDatabase",
     "PooledMySQLDatabase",
     "PooledPostgreSQLDatabase",
     "PooledSQLiteDatabase",
