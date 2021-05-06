@@ -691,7 +691,6 @@ class Query(metaclass=QueryMetaclass):
         params = []
 
         if len(args) < 1:
-
             if self.schema.allow_wildcard_select is False:
                 raise QueryError(
                     "Wildcard selects are disabled for schema: "
