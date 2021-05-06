@@ -521,7 +521,7 @@ class Schema(metaclass=SchemaMetaclass):
         # BIG HACK OH NO
         if isinstance(name, Field):
             name = name.name
-        return getattr(cls, name)
+        return getattr(cls, name, None)
 
     @classmethod
     def _is_association(cls, name):
