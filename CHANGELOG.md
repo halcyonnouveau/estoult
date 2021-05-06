@@ -1,12 +1,14 @@
 # CHANGELOG.md
 
+## v0.7.2 [2021-05-06]
+
+* Fix `has_many` associations error when preload queried is empty.
+
 ## v0.7.1 [2021-04-26]
 
-* Fix query `union`.
+* Fix query `union` to accept schema and actually work.
 
 ## v0.7.0 [2021-04-10]
-
-This version has major breaking changes, please read.
 
 * **BREAKING CHANGE:** rename `apocryphan` to `apocryphes`.
 * **BREAKING CHANGE:** `update`/`insert` now returns the changeset of the operation instead of the primary key.
