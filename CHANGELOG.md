@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## v0.7.3 [2021-05-07]
+
+* Fix checking if field is an association.
+
 ## v0.7.2 [2021-05-06]
 
 * Fix `has_many` associations error when preload queried is empty.
