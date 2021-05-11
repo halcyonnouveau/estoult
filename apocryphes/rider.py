@@ -353,9 +353,7 @@ class Rider:
 
             depends = m["__depends__"]
 
-            if depends:
-                name = depends.pop()
-
+            for name in depends:
                 if self.applied_at(name) is None:
                     raise Exception(
                         f"""

@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## v0.7.4 [2021-05-11]
+
+* Fix rider migrate `depends`.
+
 ## v0.7.3 [2021-05-07]
 
 * Fix checking if field is an association.
