@@ -354,7 +354,7 @@ class Rider:
             depends = m["__depends__"]
 
             for name in depends:
-                if self.applied_at(name) is None:
+                if name and self.applied_at(name) is None:
                     raise Exception(
                         f"""
                         {m['id']} depends on {name} but it is not applied.
