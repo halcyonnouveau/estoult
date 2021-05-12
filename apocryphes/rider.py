@@ -106,7 +106,6 @@ Rollback database to a migration.
 import os
 import re
 import glob
-import types
 import sys
 import argparse
 import time
@@ -368,7 +367,7 @@ class Rider:
                     raise MigrateError("Migration step is empty")
 
                 try:
-                    if isinstance(step.migrate, types.FunctionType):
+                    if callable(step.migrate):
                         step.migrate(self.db)
                     else:
                         self.db.sql(step.migrate, ())
@@ -422,7 +421,7 @@ class Rider:
                     continue
 
                 try:
-                    if isinstance(step.rollback, types.functionType):
+                    if callable(step.rollback):
                         step.rollback(self.db)
                     else:
                         self.db.sql(step.rollback, ())
