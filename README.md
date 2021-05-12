@@ -14,7 +14,7 @@ Features:
 - Not an ORM. Estoult doesn't attempt to apply relational algebra to objects.
 - Concise and composable (sub)queries.
 - Easy debugging by displaying any generated SQL in a readable format.
-- Performant as raw SQL. Estoult is **NOT** an ORM.
+- Fast. Estoult is **NOT** an ORM.
 
 Estoult only works with Python 3.6+ and is primarily tested on Python 3.9+.
 

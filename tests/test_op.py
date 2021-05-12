@@ -24,10 +24,7 @@ def test_and():
 
 
 def test_in():
-    s = (
-        "select users.id from users where "
-        "(users.id) in (select users.id from users)"
-    )
+    s = "select users.id from users where " "(users.id) in (select users.id from users)"
     q = _query.copy().where(op.in_(User.id, _query))
     assertSQL(q, s)
 
@@ -53,4 +50,28 @@ def test_is_null():
 def test_not_null():
     s = "select users.id from users where (users.organisation_id) is not null"
     q = _query.copy().where(op.not_null(User.organisation_id))
+    assertSQL(q, s)
+
+
+def test_sub():
+    s = "select users.id from users where (users.id) > ((users.id) - (users.id))"
+    q = _query.copy().where(User.id > (User.id - User.id))
+    assertSQL(q, s)
+
+
+def test_add():
+    s = "select users.id from users where (users.id) > ((users.id) + (users.id))"
+    q = _query.copy().where(User.id > (User.id + User.id))
+    assertSQL(q, s)
+
+
+def test_mul():
+    s = "select users.id from users where (users.id) > ((users.id) * (users.id))"
+    q = _query.copy().where(User.id > (User.id * User.id))
+    assertSQL(q, s)
+
+
+def test_div():
+    s = "select users.id from users where (users.id) > ((users.id) / (users.id))"
+    q = _query.copy().where(User.id > (User.id / User.id))
     assertSQL(q, s)
