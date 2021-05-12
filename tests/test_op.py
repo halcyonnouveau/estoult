@@ -75,3 +75,9 @@ def test_div():
     s = "select users.id from users where (users.id) > ((users.id) / (users.id))"
     q = _query.copy().where(User.id > (User.id / User.id))
     assertSQL(q, s)
+
+
+def test_mod():
+    s = "select users.id from users where (users.id) > ((users.id) % (users.id))"
+    q = _query.copy().where(User.id > (User.id % User.id))
+    assertSQL(q, s)

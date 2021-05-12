@@ -57,6 +57,11 @@ Operator Meaning
 ``>``    x is greater than y
 ``>=``   x is greater than or equal to y
 ``!=``   x is not equal to y
+``+``    x plus y
+``-``    x minus y
+``*``    x multiplied by y
+``/``    x divided by y
+``%``    x modulo y
 ======== =======
 
 .. code-block:: python
@@ -65,6 +70,7 @@ Operator Meaning
     >>> query = Query(Meal).select()
     >>> query.where(Meal.name != "Pizza")
     >>> query.where(Meal.calories > 400)
+    >>> query.where(Meal.calories == (Meal.kilojules * 4.184))
 
 Other operators are available as methods from the ``op`` module.:
 
