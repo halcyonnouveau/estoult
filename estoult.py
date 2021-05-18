@@ -24,7 +24,7 @@ except ImportError:
     mysql = None
 
 
-__version__ = "0.7.6"
+__version__ = "0.7.7"
 __all__ = [
     "Association",
     "Field",
@@ -516,8 +516,8 @@ class Schema(metaclass=SchemaMetaclass):
         changeset = cls._validate(updating, changeset)
 
         # A user specified validation function
-        validate_func = getattr(cls, "validate", lambda x: x)
-        changeset = validate_func(changeset)
+        validate_func = getattr(cls, "validate", lambda _, x: x)
+        changeset = validate_func(updating, changeset)
 
         return changeset
 

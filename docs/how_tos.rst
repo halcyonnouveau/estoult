@@ -26,7 +26,7 @@ Currently, the supported joins are:
 Validation
 ----------
 
-Estoult by default only validates the type of a field. You can easily extend this by adding a ``classmethod`` called ``validate`` to the schema.
+Estoult by default only validates the type of a field. You can easily extend this by adding a ``classmethod`` called ``validate`` to the schema which receives the arguments ``is_updating`` (whether or not it's called on an ``update`` or ``insert``), and ``row`` (the fields that are given, once they have been casted), or whatever else you want to call them.
 
 .. code-block:: python
 
@@ -35,13 +35,13 @@ Estoult by default only validates the type of a field. You can easily extend thi
     class Person(db.Schema):
         __tablename__ = "people"
 
-        id = Field(str, "id")
-        name = Field(str, "name")
-        dob = Field(str, "dob")
-        country = Field(str, "country")
+        id = Field(str)
+        name = Field(str)
+        dob = Field(str)
+        country = Field(str)
 
         @classmethod
-        def validate(cls, row):
+        def validate(cls, is_updating, row):
             if row["country"] == "France":
                 # FieldErrors are generally what you want to raise
                 # so they can be easy to catch on insert/update

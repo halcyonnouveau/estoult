@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## v0.7.7 [2021-05-19]
+
+- **Minor breaking change:** Add `is_updating` argument to user validate function.
+
 ## v0.7.6 [2021-05-12]
 
 - Rider rollback fix.
