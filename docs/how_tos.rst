@@ -30,6 +30,8 @@ Estoult by default only validates the type of a field. You can easily extend thi
 
 .. code-block:: python
 
+    from estoult import FieldError
+
     class Person(db.Schema):
         __tablename__ = "people"
 
@@ -41,7 +43,9 @@ Estoult by default only validates the type of a field. You can easily extend thi
         @classmethod
         def validate(cls, row):
             if row["country"] == "France":
-                raise Exception("No French allowed")
+                # FieldErrors are generally what you want to raise
+                # so they can be easy to catch on insert/update
+                raise FieldError("No French allowed")
 
 Query operators
 ---------------
