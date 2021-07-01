@@ -533,15 +533,17 @@ class Schema(metaclass=SchemaMetaclass):
         return isinstance(cls._get_field_by_name(name), _Association)
 
     @classmethod
-    def insert(cls, obj):
-        # Pop associations
-        associations = {
+    def _pop_associations(cls, obj):
+        return {
             cls._get_field_by_name(k): obj.pop(k)
             for k in [
                 key for key in obj.keys() if cls._is_association(key) and obj[key]
             ]
         }
 
+    @classmethod
+    def insert(cls, obj):
+        associations = cls._pop_associations(obj)
         changeset = cls._casval(obj, updating=False)
 
         params = list(changeset.values())
@@ -576,14 +578,7 @@ class Schema(metaclass=SchemaMetaclass):
     @classmethod
     def update(cls, old, new):
         obj = {**old, **new}
-
-        # Pop associations
-        associations = {
-            cls._get_field_by_name(k): obj.pop(k)
-            for k in [
-                key for key in obj.keys() if cls._is_association(key) and obj[key]
-            ]
-        }
+        associations = cls._pop_associations(obj)
 
         # Pop from old
         old_ks = [k for k in old.keys()]
