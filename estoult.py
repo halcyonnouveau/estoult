@@ -1073,6 +1073,8 @@ class Database:
             words = query.split(" ")
             if words[-2] == "returning":
                 return self.cursor.fetchone()[0]
+            else:
+                return None
 
         return self.cursor.lastrowid
 
