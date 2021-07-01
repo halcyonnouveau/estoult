@@ -553,11 +553,13 @@ class Schema(metaclass=SchemaMetaclass):
             placeholders,
         )
 
-        if psycopg2 is not None:
+        if psycopg2 is not None and cls.pk:
             sql += f" returning {cls.pk.name}"
 
         pk = cls._database_.insert(_strip(sql), params)
-        changeset[cls.pk.name] = pk
+
+        if cls.pk:
+            changeset[cls.pk.name] = pk
 
         if associations:
             changeset_asos = {}
@@ -1065,7 +1067,12 @@ class Database:
         self._execute(query, params)
 
         if psycopg2 is not None:
-            return self.cursor.fetchone()[0]
+            # Right now 'returning' is not supported and only used for
+            # getting the primary key back, this needs to be changed when we
+            # fully support it
+            words = query.split(" ")
+            if words[-2] == "returning":
+                return self.cursor.fetchone()[0]
 
         return self.cursor.lastrowid
 

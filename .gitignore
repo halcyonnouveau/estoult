@@ -1,3 +1,4 @@
+.DS_Store
 .vim/
 .vscode/
 estoult.test.db

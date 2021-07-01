@@ -9,6 +9,14 @@ _sql_file = "estoult.test.db"
 db = PooledSQLiteDatabase(database=_sql_file)
 
 
+class NoPK(db.Schema):
+    """Table without primary key"""
+
+    __tablename__ = "nopk"
+
+    not_id = Field(int)
+
+
 class Data(db.Schema):
     """For testing wildcard select."""
 
@@ -64,6 +72,15 @@ class Organisation(db.Schema):
 
 def db_create():
     db.connect()
+
+    db.sql(
+        """
+        create table if not exists nopk (
+            not_id integer
+        );
+    """,
+        (),
+    )
 
     db.sql(
         """
