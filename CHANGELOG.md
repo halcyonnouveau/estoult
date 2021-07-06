@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## v0.7.8 [Not Released]
+
+- Fix inserting on tables without primary keys.
+
 ## v0.7.7 [2021-05-19]
 
 - **Minor breaking change:** Add `is_updating` argument to user validate function.
