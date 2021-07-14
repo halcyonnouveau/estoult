@@ -34,7 +34,7 @@ Check the [documentation](https://estoult.readthedocs.io/en/latest/) for help an
 
 If you have found a bug or would like to see a feature added to Estoult, please submit an issue or a pull request! Likewise if you found something in the documentation unclear or imprecise.
 
-## Tests
+### Tests
 
 Tests are run with [pytest](https://docs.pytest.org/en/stable/). Install it using pip:
 
