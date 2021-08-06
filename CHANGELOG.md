@@ -3,6 +3,7 @@
 ## v0.7.8 [Not Released]
 
 - Fix inserting on tables without primary keys.
+- Allow association schemas to be given as string (with full module path)
 
 ## v0.7.7 [2021-05-19]
 

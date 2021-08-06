@@ -43,6 +43,15 @@ Here's an example where we have an ``Organisation`` that has many ``Users`` and 
        admin = Association.has_one(Admin, on=["id", "organisation_id"])
        users = Association.has_many(User, on=["id", "organisation_id"])
 
+If you need to create a relationship on a schema that has not yet been defined, you supply a string of the module path of the schema, instead of the schema path itself:
+
+.. code-block:: python
+
+   class Organisation(db.Schema):
+       # ...
+       admin = Association.has_one("schemas.base.Admin", on=["id", "organisation_id"])
+       # ...
+
 With associations we can now ``preload`` to retrieve all the data from ``Organisation`` to ``User`` without having to construct multiple queries.
 
 .. code-block:: python

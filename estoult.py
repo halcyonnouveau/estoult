@@ -1,6 +1,7 @@
 import sys
 import io
 
+from importlib import import_module
 from itertools import product
 from enum import Enum
 from copy import deepcopy
@@ -346,14 +347,30 @@ class qf(Field):
         return f"<qf name={self.name}>"
 
 
-_Association = namedtuple(
-    "_Association", ["cardinality", "name", "schema", "owner", "field"]
-)
-
-
 class _Cardinals(Enum):
     ONE_TO_ONE = 1
     ONE_TO_MANY = 2
+
+
+class _Association:
+    def __init__(self, cardinality, name, schema, owner, field):
+        self.cardinality = cardinality
+        self.name = name
+        self.owner = owner
+        self.field = field
+
+        self._lazy_schema = schema
+
+    @property
+    def schema(self):
+        if isinstance(self._lazy_schema, str):
+            [module, cls] = self._lazy_schema.rsplit('.', 1)
+            try:
+                self._lazy_schema = getattr(import_module(module), cls)
+            except (AttributeError, ModuleNotFoundError):
+                raise AssociationError(f"Could not import schema: {self._lazy_schema}")
+
+        return self._lazy_schema
 
 
 class Association:
@@ -400,7 +417,7 @@ class SchemaMetaclass(type):
                     f.name = key
 
             if isinstance(f, _Association):
-                setattr(c, key, f._replace(name=key))
+                f.name = key
 
         return c
 

@@ -48,6 +48,17 @@ class User(db.Schema):
         return Query(cls).get_or_none().where(cls.name == name).execute()
 
 
+class Organisation(db.Schema):
+
+    __tablename__ = "organisations"
+
+    id = Field(int, null=False)
+    name = Field(str, null=False)
+
+    admin = Association.has_one("tests.base.Admin", on=["id", "organisation_id"])
+    users = Association.has_many(User, on=["id", "organisation_id"])
+
+
 class Admin(db.Schema):
 
     __tablename__ = "admins"
@@ -57,17 +68,6 @@ class Admin(db.Schema):
     user_id = Field(int)
 
     user = Association.has_one(User, on=["user_id", "id"])
-
-
-class Organisation(db.Schema):
-
-    __tablename__ = "organisations"
-
-    id = Field(int, null=False)
-    name = Field(str, null=False)
-
-    admin = Association.has_one(Admin, on=["id", "organisation_id"])
-    users = Association.has_many(User, on=["id", "organisation_id"])
 
 
 def db_create():
