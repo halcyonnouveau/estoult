@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## v0.7.8 [Not Released]
+## v0.7.8 [2021-08-07]
 
 - Fix inserting on tables without primary keys.
 - Allow association schemas to be given as string (with full module path)
