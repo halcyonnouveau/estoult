@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## v0.7.9 [2021-11-05]
+
+- Add `run --query` command to `rider`.
+
 ## v0.7.8 [2021-08-07]
 
 - Fix inserting on tables without primary keys.

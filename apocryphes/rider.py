@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 r"""
-``rider`` is a simple tool to help manage database migrations using the existing
+``rider`` is a simple CLI tool to help manage database migrations using the existing
 Estoult database object.
 
 Start by creating a ``rider.py`` file to tell ``rider`` about your database object.
@@ -113,6 +113,7 @@ import uuid
 import ast
 import getpass
 import socket
+import pprint
 
 from datetime import datetime
 from pathlib import Path
@@ -432,8 +433,18 @@ class Rider:
             RiderMigration.delete({"migration": roll["id"]})
             RiderLog.new(roll["id"], "rollback")
 
+    @_atomic
+    def run(self, args):
+        query = args.query
+
+        try:
+            result = self.db.select(query, ())
+            pprint.pprint(result)
+        except TypeError:
+            pprint.pprint(self.db.cursor.lastrowid)
+
     def parse_args(self):
-        parser = argparse.ArgumentParser(description="Rider migration tool for Estoult")
+        parser = argparse.ArgumentParser(description="Rider migration/CLI tool for Estoult")
         subparsers = parser.add_subparsers(
             title="positional arguments", dest="subcommand"
         )
@@ -452,6 +463,11 @@ class Rider:
         )
         rollback_parser.add_argument(
             "-i", "--index", help="migration index", required=True
+        )
+
+        run_parser = subparsers.add_parser("run", help="run command on default connection")
+        run_parser.add_argument(
+            "-q", "--query", help="query string", required=True
         )
 
         args = parser.parse_args()
