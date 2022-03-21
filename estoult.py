@@ -649,7 +649,7 @@ class Schema(metaclass=SchemaMetaclass):
         return cls._database_.sql(_strip(sql), params)
 
     @classmethod
-    def delete_by_pk(cls, id, new):
+    def delete_by_pk(cls, id):
         return cls.delete({cls.pk.name: id})
 
 
