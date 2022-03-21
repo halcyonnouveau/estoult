@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## v0.7.10 [2022-03-21]
+
+- Fix `delete_by_pk` args.
+
 ## v0.7.9 [2021-11-05]
 
 - Add `run --query` command to `rider`.
