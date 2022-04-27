@@ -121,13 +121,13 @@ Disabling wildcard selects on a schema
 
 If performance is of importance to you, it is recommended to never use a wildcard (``*``) in your SQL select queries. For larger tables a ``select *`` is often `detrimental to performance <https://tanelpoder.com/posts/reasons-why-select-star-is-bad-for-sql-performance>`_. Unfortunately, most ORMs (and Estoult) make wildcards too easy to do, as they are the default when no fields are specifically provided in a query.
 
-But unlike most ORMs, Estoult doesn't suck and actually cares about performant SQL, so you can easily remove the ability to use a ``*`` with the class variable ``allow_wildcard_select`` in your schema.
+But unlike most ORMs, Estoult doesn't suck and actually cares about performant SQL, so you can easily remove the ability to use a ``*`` with the class variable ``_allow_wildcard_select`` in your schema.
 
 .. code-block:: python
 
     class VeryBigTable(db.schema):
         __tablename__ = "very_big_table"
-        allow_wildcard_select = False
+        _allow_wildcard_select = False
 
         id = Field(str)
         field1 = Field(str)

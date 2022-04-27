@@ -25,7 +25,7 @@ except ImportError:
     mysql = None
 
 
-__version__ = "0.7.10"
+__version__ = "0.7.11"
 __all__ = [
     "Association",
     "Field",
@@ -259,7 +259,7 @@ class fn(metaclass=FunctionMetaclass):
         :param schema: The schema.
         :type schema: Schema
         """
-        if schema.allow_wildcard_select is False:
+        if schema._allow_wildcard_select is False:
             raise QueryError(
                 "Wildcard selects are disabled for schema: "
                 f"`{schema.__tablename__}`"
@@ -458,13 +458,13 @@ class Schema(metaclass=SchemaMetaclass):
     """
     A schema representation of a database table.
 
-    :ivar allow_wildcard_select: Determines if wildcards can be used when 'selecting'.
+    :ivar _allow_wildcard_select: Determines if wildcards can be used when 'selecting'.
     """
 
     _database_: Any = None
     __tablename__ = None
 
-    allow_wildcard_select = True
+    _allow_wildcard_select = True
 
     @classmethod
     def _cast(cls, updating, row):
@@ -710,7 +710,7 @@ class Query(metaclass=QueryMetaclass):
         params = []
 
         if len(args) < 1:
-            if self.schema.allow_wildcard_select is False:
+            if self.schema._allow_wildcard_select is False:
                 raise QueryError(
                     "Wildcard selects are disabled for schema: "
                     f"`{self.schema.__tablename__}`"
@@ -920,7 +920,7 @@ def _do_preload(db, association, row):
     # If the association is just an association, then we can preload it without any
     # issues
     if isinstance(association, _Association):
-        if association.schema.allow_wildcard_select is False:
+        if association.schema._allow_wildcard_select is False:
             raise QueryError(
                 "Wildcard selects are disabled for schema: "
                 f"`{association.schema.__tablename__}`"
@@ -949,7 +949,7 @@ def _do_preload(db, association, row):
     fields = [v.name for v in values if isinstance(v, Field) and v.name is not None]
     select = ", ".join(fields) if len(fields) > 0 else "*"
 
-    if aso.schema.allow_wildcard_select is False and select == "*":
+    if aso.schema._allow_wildcard_select is False and select == "*":
         raise QueryError(
             "Wildcard selects are disabled for schema: "
             f"`{aso.schema.__tablename__}`"
