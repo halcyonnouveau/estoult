@@ -22,7 +22,7 @@ class Data(db.Schema):
 
     __tablename__ = "data"
 
-    allow_wildcard_select = False
+    _allow_wildcard_select = False
 
     id = Field(int, null=False)
     user_id = Field(int)
