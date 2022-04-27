@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## v0.7.11 [2022-04-27]
+
+- Change `allow_wildcard_select` to `_allow_wildcard_select`.
+
 ## v0.7.10 [2022-03-21]
 
 - Fix `delete_by_pk` args.
