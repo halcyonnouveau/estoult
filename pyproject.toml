@@ -38,4 +38,7 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [dependency-groups]
-dev = ["pytest>=7.0.1"]
+dev = [
+    "pytest>=7.0.1",
+    "ruff>=0.0.17",
+]

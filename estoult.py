@@ -27,6 +27,7 @@ except ImportError:
 
 try:
     from importlib.metadata import version
+
     __version__ = version("estoult")
 except ImportError:
     __version__ = "0.0.0.dev"
@@ -156,10 +157,10 @@ class OperatorMetaclass(type):
 
         c = super(OperatorMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
-        c.add_op("or_", "or") # type: ignore
-        c.add_op("and_", "and") # type: ignore
-        c.add_op("in_", "in") # type: ignore
-        c.add_op("like", "like") # type: ignore
+        c.add_op("or_", "or")  # type: ignore
+        c.add_op("and_", "and")  # type: ignore
+        c.add_op("in_", "in")  # type: ignore
+        c.add_op("like", "like")  # type: ignore
 
         return c
 
@@ -179,6 +180,7 @@ class op(metaclass=OperatorMetaclass):
         """
         Adds an operator to the module.
         """
+
         def func(lhs, rhs):
             fn = _make_op(op)
             return fn(lhs, rhs)
@@ -212,7 +214,6 @@ class op(metaclass=OperatorMetaclass):
 
 
 class FunctionMetaclass(type):
-
     sql_fns = [
         "count",
         "sum",
@@ -389,7 +390,7 @@ class _Association:
     @property
     def schema(self):
         if isinstance(self._lazy_schema, str):
-            [module, cls] = self._lazy_schema.rsplit('.', 1)
+            [module, cls] = self._lazy_schema.rsplit(".", 1)
             try:
                 self._lazy_schema = getattr(import_module(module), cls)
             except (AttributeError, ModuleNotFoundError):
@@ -435,7 +436,7 @@ class SchemaMetaclass(type):
 
             if isinstance(f, Field):
                 # Reference schema in fields
-                f.schema = c # type: ignore
+                f.schema = c  # type: ignore
 
                 # Set name to var reference
                 if f.name is None:
@@ -693,8 +694,8 @@ class Schema(metaclass=SchemaMetaclass):
             raise FieldError(f"Primary key field has no name in {cls.__name__}")
         return cls.delete({cls.pk.name: id})
 
-class QueryMetaclass(type):
 
+class QueryMetaclass(type):
     sql_joins = [
         "inner join",
         "left join",
@@ -725,13 +726,13 @@ Node = namedtuple("Node", ["node", "params"])
 
 
 class Query(metaclass=QueryMetaclass):
-    def inner_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
-    def left_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
-    def left_outer_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
-    def right_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
-    def right_outer_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
-    def full_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
-    def full_outer_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
+    def inner_join(self, schema: Type["Schema"], on: list[Any]) -> "Query": ...
+    def left_join(self, schema: Type["Schema"], on: list[Any]) -> "Query": ...
+    def left_outer_join(self, schema: Type["Schema"], on: list[Any]) -> "Query": ...
+    def right_join(self, schema: Type["Schema"], on: list[Any]) -> "Query": ...
+    def right_outer_join(self, schema: Type["Schema"], on: list[Any]) -> "Query": ...
+    def full_join(self, schema: Type["Schema"], on: list[Any]) -> "Query": ...
+    def full_outer_join(self, schema: Type["Schema"], on: list[Any]) -> "Query": ...
 
     def __init__(self, schema):
         self.schema = schema
@@ -1047,23 +1048,17 @@ def _get_connection(func):
 
     return wrapper
 
+
 if TYPE_CHECKING:
     from sqlite3 import Connection as SQLiteConnection, Cursor as SQLiteCursor
     from psycopg2.extensions import connection as PGConnection, cursor as PGCursor  # type: ignore
     from MySQLdb.connections import Connection as MySQLConnection  # type: ignore
     from MySQLdb.cursors import Cursor as MySQLCursor  # type: ignore
 
-Connection =Union[
-    'SQLiteConnection',
-    'PGConnection',
-    'MySQLConnection'
-]
+Connection = Union["SQLiteConnection", "PGConnection", "MySQLConnection"]
 
-Cursor = Union[
-    'SQLiteCursor',
-    'PGCursor',
-    'MySQLCursor'
-]
+Cursor = Union["SQLiteCursor", "PGCursor", "MySQLCursor"]
+
 
 class Database(ABC):
     def __init__(self, autoconnect=True, *args, **kwargs):
@@ -1160,7 +1155,9 @@ class Database(ABC):
             if words[-2] == "returning":
                 row = self.cursor.fetchone()
                 if row is None:
-                    raise DatabaseError("Expected a returned value from INSERT but got None")
+                    raise DatabaseError(
+                        "Expected a returned value from INSERT but got None"
+                    )
                     return row[0]
                 else:
                     return None

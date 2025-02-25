@@ -30,7 +30,6 @@ class Data(db.Schema):
 
 
 class User(db.Schema):
-
     __tablename__ = "users"
 
     id = Field(int, null=False)
@@ -49,7 +48,6 @@ class User(db.Schema):
 
 
 class Organisation(db.Schema):
-
     __tablename__ = "organisations"
 
     id = Field(int, null=False)
@@ -60,7 +58,6 @@ class Organisation(db.Schema):
 
 
 class Admin(db.Schema):
-
     __tablename__ = "admins"
 
     id = Field(int, null=False)

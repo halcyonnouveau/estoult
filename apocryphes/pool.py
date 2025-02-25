@@ -52,9 +52,9 @@ try:
     from psycopg2.extensions import TRANSACTION_STATUS_INERROR
     from psycopg2.extensions import TRANSACTION_STATUS_UNKNOWN
 except ImportError:
-    TRANSACTION_STATUS_IDLE = (
-        TRANSACTION_STATUS_INERROR
-    ) = TRANSACTION_STATUS_UNKNOWN = None
+    TRANSACTION_STATUS_IDLE = TRANSACTION_STATUS_INERROR = (
+        TRANSACTION_STATUS_UNKNOWN
+    ) = None
 
 from estoult import MySQLDatabase, PostgreSQLDatabase, SQLiteDatabase
 

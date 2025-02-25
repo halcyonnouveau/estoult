@@ -250,7 +250,6 @@ class RiderMigration(Schema):
 
 
 class Rider:
-
     config = {
         "source": "./migrations",
         "table_name": "_rider_migrations",
@@ -357,7 +356,7 @@ class Rider:
                 if name and self.applied_at(name) is None:
                     raise Exception(
                         f"""
-                        {m['id']} depends on {name} but it is not applied.
+                        {m["id"]} depends on {name} but it is not applied.
                         """.strip()
                     )
 
@@ -444,7 +443,9 @@ class Rider:
             pprint.pprint(self.db.cursor.lastrowid)
 
     def parse_args(self):
-        parser = argparse.ArgumentParser(description="Rider migration/CLI tool for Estoult")
+        parser = argparse.ArgumentParser(
+            description="Rider migration/CLI tool for Estoult"
+        )
         subparsers = parser.add_subparsers(
             title="positional arguments", dest="subcommand"
         )
@@ -465,10 +466,10 @@ class Rider:
             "-i", "--index", help="migration index", required=True
         )
 
-        run_parser = subparsers.add_parser("run", help="run command on default connection")
-        run_parser.add_argument(
-            "-q", "--query", help="query string", required=True
+        run_parser = subparsers.add_parser(
+            "run", help="run command on default connection"
         )
+        run_parser.add_argument("-q", "--query", help="query string", required=True)
 
         args = parser.parse_args()
 

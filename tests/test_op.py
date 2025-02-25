@@ -24,7 +24,7 @@ def test_and():
 
 
 def test_in():
-    s = "select users.id from users where " "(users.id) in (select users.id from users)"
+    s = "select users.id from users where (users.id) in (select users.id from users)"
     q = _query.copy().where(op.in_(User.id, _query))
     assertSQL(q, s)
 
