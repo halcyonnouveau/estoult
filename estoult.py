@@ -103,7 +103,7 @@ def _parse_args(func):
 def _strip(string):
     string = string.rstrip(" ,")
 
-    if string.endswith("and"):
+    if string.endswith(" and"):
         string = string[:-3]
 
     return string

@@ -1,0 +1,13 @@
+version = 1
+revision = 1
+requires-python = ">=3.6"
+resolution-markers = [
+    "python_full_version >= '3.8'",
+    "python_full_version == '3.7.*'",
+    "python_full_version < '3.7'",
+]
+
+[[package]]
+name = "estoult"
+version = "0.7.11"
+source = { editable = "." }
