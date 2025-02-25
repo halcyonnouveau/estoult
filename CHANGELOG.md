@@ -1,5 +1,10 @@
 # CHANGELOG.md
 
+## v0.7.12 [2025-02-25]
+
+- General static type fixes.
+- Fix errors for tables ending in `and`.
+
 ## v0.7.11 [2022-04-27]
 
 - Change `allow_wildcard_select` to `_allow_wildcard_select`.
