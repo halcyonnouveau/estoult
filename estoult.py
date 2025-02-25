@@ -25,8 +25,9 @@ try:
 except ImportError:
     mysql = None
 
+from importlib.metadata import version
+__version__ = version("estoult")
 
-__version__ = "0.7.11"
 __all__ = [
     "Association",
     "Field",

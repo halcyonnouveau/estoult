@@ -22,8 +22,11 @@ Estoult only works with Python 3.6+ and is primarily tested on Python 3.9+.
 
 Install Estoult through pip:
 
-```
+```bash
 pip install estoult
+
+# or with a specific database driver (postgres or mysql)
+pip install estoult[postgres]
 ```
 
 ## Documentation
