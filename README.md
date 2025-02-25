@@ -7,7 +7,7 @@
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/estoult)](https://pypi.org/project/estoult/)
 [![Documentation Status](https://readthedocs.org/projects/estoult/badge/?version=latest)](https://estoult.readthedocs.io/en/latest/?badge=latest)
 
-Estoult is a Python toolkit for data mapping with an integrated query builder for SQL databases. It currently supports MySQL, PostgreSQL, and SQLite.
+Estoult (pronounced *es-too*) is a Python toolkit for data mapping with an integrated query builder for SQL databases. It currently supports MySQL, PostgreSQL, and SQLite.
 
 Features:
 
@@ -27,6 +27,33 @@ pip install estoult
 
 # or with a specific database driver (postgres or mysql)
 pip install estoult[postgres]
+```
+
+## Quick Example
+```python
+from estoult import Schema, Field, Query, SQLiteDatabase
+
+db = SQLiteDatabase("example.db")
+
+class User(db.Schema):
+    __tablename__ = "User"
+    id = Field(int, primary_key=True)
+    name = Field(str)
+    age = Field(int)
+
+# Insert a user
+user = User.insert({"name": "Artoria", "age": 35})
+
+# Query users
+users = (
+    Query(User)
+    .select()
+    .where(User.age > 21)
+    .execute()
+)
+
+# Update user
+User.update({"id": user["id"]}, {"age": 36})
 ```
 
 ## Documentation
