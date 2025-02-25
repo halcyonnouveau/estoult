@@ -31,3 +31,8 @@ rider = "apocryphes.rider:entry"
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.1",
+]

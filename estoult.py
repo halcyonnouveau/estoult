@@ -1,13 +1,14 @@
 import sys
 import io
 
+from abc import ABC, abstractmethod
 from importlib import import_module
 from itertools import product
 from enum import Enum
 from copy import deepcopy
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import Any, Optional
+from typing import Any, Optional, Union, TYPE_CHECKING, Type
 
 try:
     import sqlite3
@@ -15,12 +16,12 @@ except ImportError:
     sqlite3 = None
 
 try:
-    import psycopg2
+    import psycopg2  # type: ignore
 except ImportError:
     psycopg2 = None
 
 try:
-    import MySQLdb as mysql
+    import MySQLdb as mysql  # type: ignore
 except ImportError:
     mysql = None
 
@@ -151,26 +152,29 @@ class OperatorMetaclass(type):
 
         c = super(OperatorMetaclass, cls).__new__(cls, clsname, bases, attrs)
 
-        c.add_op("or_", "or")
-        c.add_op("and_", "and")
-        c.add_op("in_", "in")
-        c.add_op("like", "like")
+        c.add_op("or_", "or") # type: ignore
+        c.add_op("and_", "and") # type: ignore
+        c.add_op("in_", "in") # type: ignore
+        c.add_op("like", "like") # type: ignore
 
         return c
 
 
 class op(metaclass=OperatorMetaclass):
+    @staticmethod
+    def or_(lhs: Any, rhs: Any) -> Clause: ...
+    @staticmethod
+    def and_(lhs: Any, rhs: Any) -> Clause: ...
+    @staticmethod
+    def in_(lhs: Any, rhs: Any) -> Clause: ...
+    @staticmethod
+    def like(lhs: Any, rhs: Any) -> Clause: ...
+
     @classmethod
-    def add_op(cls, name, op):
+    def add_op(cls, name: str, op: str) -> None:
         """
         Adds an operator to the module.
-
-        :param name: What the name of the function should be called.
-        :type name: str
-        :param op: The SQL operator it is turned into.
-        :type op: str
         """
-
         def func(lhs, rhs):
             fn = _make_op(op)
             return fn(lhs, rhs)
@@ -297,6 +301,19 @@ class Field(metaclass=FieldMetaclass):
     :type primary_key: bool, optional
     """
 
+    def __add__(self, other: Any) -> Clause: ...
+    def __sub__(self, other: Any) -> Clause: ...
+    def __mul__(self, other: Any) -> Clause: ...
+    def __truediv__(self, other: Any) -> Clause: ...
+    def __mod__(self, other: Any) -> Clause: ...
+
+    def __eq__(self, other: Any) -> Clause: ...  # type: ignore
+    def __ne__(self, other: Any) -> Clause: ...  # type: ignore
+    def __lt__(self, other: Any) -> Clause: ...
+    def __le__(self, other: Any) -> Clause: ...
+    def __gt__(self, other: Any) -> Clause: ...
+    def __ge__(self, other: Any) -> Clause: ...
+
     def __init__(
         self, type, name=None, caster=None, null=True, default=None, primary_key=False
     ):
@@ -311,6 +328,10 @@ class Field(metaclass=FieldMetaclass):
 
     @property
     def full_name(self):
+        if self.schema is None:
+            raise FieldError("Field does not have an associated schema")
+        if self.name is None:
+            raise FieldError("Field does not have a name")
         return f"{self.schema.__tablename__}.{self.name}"
 
     def __str__(self):
@@ -410,7 +431,7 @@ class SchemaMetaclass(type):
 
             if isinstance(f, Field):
                 # Reference schema in fields
-                f.schema = c
+                f.schema = c # type: ignore
 
                 # Set name to var reference
                 if f.name is None:
@@ -584,6 +605,10 @@ class Schema(metaclass=SchemaMetaclass):
             changeset_asos = {}
 
             for aso, value in associations.items():
+                if not isinstance(aso, _Association):
+                    raise AssociationError(f"Expected _Association, got {type(aso)}")
+                if aso.name is None:
+                    raise AssociationError("Association name cannot be None")
                 changeset, changeset_asos[aso.name] = _do_association(
                     changeset, cls, aso, value
                 )
@@ -624,6 +649,10 @@ class Schema(metaclass=SchemaMetaclass):
             changeset_asos = {}
 
             for aso, value in associations.items():
+                if not isinstance(aso, _Association):
+                    raise AssociationError(f"Expected _Association, got {type(aso)}")
+                if aso.name is None:
+                    raise AssociationError("Association name cannot be None")
                 changeset, changeset_asos[aso.name] = _do_association(
                     changeset, cls, aso, value
                 )
@@ -634,6 +663,10 @@ class Schema(metaclass=SchemaMetaclass):
 
     @classmethod
     def update_by_pk(cls, id, new):
+        if cls.pk is None:
+            raise FieldError(f"No primary key defined for {cls.__name__}")
+        if cls.pk.name is None:
+            raise FieldError(f"Primary key field has no name in {cls.__name__}")
         return cls.update({cls.pk.name: id}, new)
 
     @classmethod
@@ -650,8 +683,11 @@ class Schema(metaclass=SchemaMetaclass):
 
     @classmethod
     def delete_by_pk(cls, id):
+        if cls.pk is None:
+            raise FieldError(f"No primary key defined for {cls.__name__}")
+        if cls.pk.name is None:
+            raise FieldError(f"Primary key field has no name in {cls.__name__}")
         return cls.delete({cls.pk.name: id})
-
 
 class QueryMetaclass(type):
 
@@ -685,6 +721,14 @@ Node = namedtuple("Node", ["node", "params"])
 
 
 class Query(metaclass=QueryMetaclass):
+    def inner_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
+    def left_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
+    def left_outer_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
+    def right_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
+    def right_outer_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
+    def full_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
+    def full_outer_join(self, schema: Type['Schema'], on: list[Any]) -> 'Query': ...
+
     def __init__(self, schema):
         self.schema = schema
 
@@ -999,30 +1043,53 @@ def _get_connection(func):
 
     return wrapper
 
+if TYPE_CHECKING:
+    from sqlite3 import Connection as SQLiteConnection, Cursor as SQLiteCursor
+    from psycopg2.extensions import connection as PGConnection, cursor as PGCursor  # type: ignore
+    from MySQLdb.connections import Connection as MySQLConnection  # type: ignore
+    from MySQLdb.cursors import Cursor as MySQLCursor  # type: ignore
 
-class Database:
+Connection =Union[
+    'SQLiteConnection',
+    'PGConnection',
+    'MySQLConnection'
+]
+
+Cursor = Union[
+    'SQLiteCursor',
+    'PGCursor',
+    'MySQLCursor'
+]
+
+class Database(ABC):
     def __init__(self, autoconnect=True, *args, **kwargs):
         self.autoconnect = autoconnect
 
         self.Schema = Schema
         self.Schema._database_ = self
 
-        self._conn = None
-        self._cursor = None
+        self._conn: Optional[Connection] = None
+        self._cursor: Optional[Cursor] = None
         self.is_trans = False
 
         self.cargs = args
         self.ckwargs = kwargs
 
+    @abstractmethod
+    def _connect(self) -> Connection:
+        raise NotImplementedError
+
     def connect(self):
         self._conn = self._connect()
 
     @property
-    def conn(self):
+    def conn(self) -> Connection:
+        if self._conn is None:
+            raise DatabaseError("No active connection")
         return self._conn
 
     def _close(self):
-        self._conn.close()
+        self.conn.close()
 
     def close(self):
         return self._close()
@@ -1031,10 +1098,9 @@ class Database:
         self._cursor = self.conn.cursor()
 
     @property
-    def cursor(self):
+    def cursor(self) -> Cursor:
         if self._cursor is None:
             self._cursor = self.conn.cursor()
-
         return self._cursor
 
     @contextmanager
@@ -1071,7 +1137,11 @@ class Database:
     @_get_connection
     def select(self, query, params):
         self._execute(query, params)
-        cols = [col[0] for col in self.cursor.description]
+        description = self.cursor.description
+        if description is None:
+            return []  # No results means no columns
+
+        cols = [col[0] for col in description]
         return [dict(zip(cols, row)) for row in self.cursor.fetchall()]
 
     @_get_connection
@@ -1084,9 +1154,12 @@ class Database:
             # fully support it
             words = query.split(" ")
             if words[-2] == "returning":
-                return self.cursor.fetchone()[0]
-            else:
-                return None
+                row = self.cursor.fetchone()
+                if row is None:
+                    raise DatabaseError("Expected a returned value from INSERT but got None")
+                    return row[0]
+                else:
+                    return None
 
         return self.cursor.lastrowid
 
@@ -1108,13 +1181,13 @@ class MySQLDatabase(Database):
         super().__init__(*args, **kwargs)
 
     def _connect(self):
-        return mysql.connect(*self.cargs, **self.ckwargs)
+        return mysql.connect(*self.cargs, **self.ckwargs)  # type: ignore
 
     @_get_connection
     def mogrify(self, query, params):
         with self.atomic(commit=False):
             self._execute(query, params)
-            return self.cursor._executed
+            return self.cursor._executed  # type: ignore
 
 
 class PostgreSQLDatabase(Database):
@@ -1124,11 +1197,11 @@ class PostgreSQLDatabase(Database):
         super().__init__(*args, **kwargs)
 
     def _connect(self):
-        return psycopg2.connect(*self.cargs, **self.ckwargs)
+        return psycopg2.connect(*self.cargs, **self.ckwargs)  # type: ignore
 
     @_get_connection
     def mogrify(self, query, params):
-        return self.cursor.mogrify(query, params)
+        return self.cursor.mogrify(query, params)  # type: ignore
 
 
 class SQLiteDatabase(Database):
@@ -1138,7 +1211,7 @@ class SQLiteDatabase(Database):
         super().__init__(*args, **kwargs)
 
     def _connect(self):
-        return sqlite3.connect(*self.cargs, **self.ckwargs)
+        return sqlite3.connect(*self.cargs, **self.ckwargs)  # type: ignore
 
     @_replace_placeholders
     def _execute(self, *args, **kwargs):
@@ -1151,7 +1224,7 @@ class SQLiteDatabase(Database):
             # But we **can** print it! So just capture that! :) FML
 
             # redirect sys.stdout to a buffer
-            self.conn.set_trace_callback(print)
+            self.conn.set_trace_callback(print)  # type: ignore
             stdout = sys.stdout
             sys.stdout = io.StringIO()
 
@@ -1160,6 +1233,6 @@ class SQLiteDatabase(Database):
             # get output and restore sys.stdout
             output = sys.stdout.getvalue()
             sys.stdout = stdout
-            self.conn.set_trace_callback(None)
+            self.conn.set_trace_callback(None)  # type: ignore
 
             return output.encode("utf-8")
