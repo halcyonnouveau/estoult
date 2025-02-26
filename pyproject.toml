@@ -1,9 +1,9 @@
 [project]
 name = "estoult"
-version = "0.7.13"
+version = "0.8.0"
 description = "Data mapper and query builder for SQL databases."
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.9"
 dependencies = []
 authors = [{ name = "Justin Duch", email = "justin@duch.me" }]
 classifiers = [
@@ -11,9 +11,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

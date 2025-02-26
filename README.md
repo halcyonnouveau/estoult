@@ -16,7 +16,7 @@ Features:
 - Easy debugging by displaying any generated SQL in a readable format.
 - Fast. Estoult is **NOT** an ORM.
 
-Estoult only works with Python 3.6+ and is primarily tested on Python 3.9+.
+Estoult only works with Python 3.9+.
 
 ## Installation
 
