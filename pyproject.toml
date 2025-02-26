@@ -1,6 +1,6 @@
 [project]
 name = "estoult"
-version = "0.7.12"
+version = "0.7.13"
 description = "Data mapper and query builder for SQL databases."
 readme = "README.md"
 requires-python = ">=3.6"
@@ -30,6 +30,9 @@ Homepage = "https://github.com/halcyonnouveau/estoult"
 mysql = ["mysqlclient>=2.0.0"]
 postgres = ["psycopg2-binary>=2.9.0"]
 
+[tool.pdm.build]
+includes = ["estoult.py", "apocryphes"]
+
 [project.scripts]
 rider = "apocryphes.rider:entry"
 
@@ -38,7 +41,4 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [dependency-groups]
-dev = [
-    "pytest>=7.0.1",
-    "ruff>=0.0.17",
-]
+dev = ["pytest>=7.0.1", "ruff>=0.0.17"]

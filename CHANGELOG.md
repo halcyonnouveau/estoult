@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## v0.7.13 [2025-02-26]
+
+- Fix module export.
+
 ## v0.7.12 [2025-02-25]
 
 - General static type fixes.
